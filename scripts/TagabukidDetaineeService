@@ -1,0 +1,18 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import com.rameses.services.extended.*;
+
+public class TagabukidDetaineeService  {
+
+	@ActiveDB(value='pdrc_detainee', em='tagabukid_pdrc')
+	def em
+
+	@ProxyMethod
+	public def save(o) {
+		em.create(o);
+		return "SAVED";
+	}
+
+
+}

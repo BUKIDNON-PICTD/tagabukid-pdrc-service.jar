@@ -1,0 +1,11 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainee">
+
+    <field name = "objid" primary="true" prefix="DTA"/>
+    <field name = "firstname" required="true" searchable="true"/>
+    <field name = "middlename" required="true" searchable="true"/>
+    <field name = "lastname" required="true" searchable="true"/>
+    <field name = "address" required="true" searchable="true"/>
+
+	</element>
+</schema>
