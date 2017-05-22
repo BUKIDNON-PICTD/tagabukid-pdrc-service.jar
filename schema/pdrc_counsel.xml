@@ -1,0 +1,8 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_counsel">
+		<field name="objid" primary="true" prefix="COU" />
+		<field name="entity_objid" required="true" searchable="true" indexed="true"/>
+		<field name="entity_name" required="false" searchable="true" indexed="true"/>
+		<field name="oldid" required="false" />
+	</element>
+</schema>

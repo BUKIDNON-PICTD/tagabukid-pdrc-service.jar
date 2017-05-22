@@ -1,0 +1,13 @@
+  <schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_case_counsel">
+
+ 	<feild name="objid" primary="true" prefix="DTC" />
+  	<feild name="detainees_objid" required="true" searchable="true" />
+  	<feild name="case_objid" required="true" searchable="true" />
+  	<feild name="releaseremraks" required="true" searchable="true" />
+  	<feild name="caseremarks" required="true" searchable="true" />
+  	<feild name="sentencedate" required="true" searchable="true" />
+  	<feild name="sentence" required="true" searchable="true" />
+
+	</element>
+</schema>

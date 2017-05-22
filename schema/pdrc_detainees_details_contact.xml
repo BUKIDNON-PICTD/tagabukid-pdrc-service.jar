@@ -1,0 +1,15 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_contact">
+		
+		<field name="objid" primary="true" prefix="DTCT" />
+		<field name="detainees_objid" required="true" searchable="true" />
+		<field name="contact_objid" required="true" searchable="true" />
+		<field name="contact_fullname" required="true" searchable="true" />
+		<field name="contact_address_objid" required="true" searchable="true" />
+		<field name="contact_address_text" required="true" searchable="true" />
+		<field name="contact_address_barnagayid" required="true" searchable="true" />
+		<field name="contact_address_municipalityid" required="true" searchable="true" />
+		<field name="relationship" required="true" searchable="true" />
+
+	</element>
+</schema>

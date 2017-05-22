@@ -1,0 +1,9 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_social">
+		
+		<field name="objid" primary="ture" prefix="DTS" />
+		<field name="detainees_objid" required="ture" searchable="true" />
+		<field name="organization" required="ture" searchable="true" />
+
+	</element>
+</schema>

@@ -1,8 +1,9 @@
 <schema adapter="tagabukid_pdrc">
 	<element tablename="pdrc_courts">
-		<field name="objid" primary="true" prefix="CAS" />
+		<field name="objid" primary="true" prefix="CRT" />
 		<field name="name" required="true" searchable="true" indexed="true"/>
 		<field name="code" required="false" searchable="true" indexed="true"/>
 		<field name="description" required="false" searchable="true" indexed="true"/>
+		<field name="oldid" required="false" />
 	</element>
 </schema>

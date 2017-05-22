@@ -1,0 +1,9 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_economic">
+		
+		<field name="objid" primary="true" prefix="DTE" />
+		<field name="detainees_objid" required="true" searchable="true" />
+		<field name="occupation" required="true" searchable="true" />
+
+	</element>
+</schema>

@@ -1,0 +1,9 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_social_language">
+		
+		<field name="objid" primary="true" prefix="DTSL"/>
+		<field name="detainees_objid" required="true" searchable="true"/>
+		<field name="languageanddialects" required="true" searchable="true"/>
+
+	</element>
+</schema>
