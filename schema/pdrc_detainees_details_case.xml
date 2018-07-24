@@ -1,13 +1,15 @@
-  <schema adapter="tagabukid_pdrc">
-	<element tablename="pdrc_detainees_details_case_counsel">
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_case">
+		<field name="objid" primary="true" prefix="DTC" />
+		<field name="detaineeid" required="true" searchable="true" />
+		<field name="casefile_objid" required="true" searchable="true" />
+		<field name="releaseremraks" required="false" searchable="true" />
+		<field name="caseremarks" required="false" searchable="true" />
+		<field name="sentencedate" required="false" searchable="true" />
+		<field name="sentence" required="false" searchable="true" />
 
- 	<feild name="objid" primary="true" prefix="DTC" />
-  	<feild name="detainees_objid" required="true" searchable="true" />
-  	<feild name="case_objid" required="true" searchable="true" />
-  	<feild name="releaseremraks" required="true" searchable="true" />
-  	<feild name="caseremarks" required="true" searchable="true" />
-  	<feild name="sentencedate" required="true" searchable="true" />
-  	<feild name="sentence" required="true" searchable="true" />
-
+		<complex name="casefile" ref="pdrc_cases" jointype="many-to-one" required="false">
+			<key field="casefile_objid" target="objid" /> 		
+		</complex>
 	</element>
 </schema>

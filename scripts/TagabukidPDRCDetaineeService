@@ -1,0 +1,51 @@
+import com.rameses.annotations.*;
+import com.rameses.common.*;
+import com.rameses.services.extended.*;
+
+
+class TagabukidPDRCDetaineeService
+{
+	
+	@ActiveDB(value='pdrc_detainees', em='tagabukid_pdrc')
+	def em;
+
+	@Env
+	def env;
+
+	@Service('DateService')
+	def dtSvc 
+
+	@Service("SequenceService")
+	def seqSvc;
+
+	@Service("PersistenceService")
+    def persistenceSvc;
+
+	@ProxyMethod
+	def initCreate(){
+		def entity = [:];
+		entity.recordlog = [:]
+        entity.detainee = [:]
+		entity.recordlog.datecreated = dtSvc.serverDate
+        entity.recordlog.createdbyuserid = env.USERID
+        entity.recordlog.createdbyuser = env.FULLNAME
+        entity.recordlog.dateoflastupdate =  dtSvc.serverDate
+        entity.recordlog.lastupdatedbyuserid = env.USERID
+        entity.recordlog.lastupdatedbyuser = env.FULLNAME
+
+        entity.cases = []
+        return entity;
+
+	}
+
+    @ProxyMethod
+    public def getDetaineeNo(){
+		def appcode = "DNO"
+		def yr      = dtSvc.serverYear;
+		// def mnth    = dtSvc.serverMonth;
+		// def smon    = ( mnth < 10 ) ? "0"+mnth : mnth+"";
+		def prefix  = appcode+yr;
+		return prefix+seqSvc.getNextFormattedSeries(prefix);
+    }
+
+}
