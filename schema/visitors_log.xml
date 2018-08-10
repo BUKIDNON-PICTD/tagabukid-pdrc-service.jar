@@ -1,4 +1,5 @@
 
+
 <schema adapter="tagabukid_pdrc">
 	<element tablename="pdrc_visitors">
   <field name="objid" primary="true" prefix="DT"/>
@@ -24,4 +25,4 @@
 
 
 	</element>
-</schema>
+  </schema>

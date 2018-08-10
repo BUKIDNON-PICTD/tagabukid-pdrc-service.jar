@@ -70,7 +70,8 @@
       <key field="objid" target="detaineeid"/>
     </complex>
 
-    <complex name="visitorslog" ref="pdrc_detainees_visitors" jointype="one-to-many" required="false">
+
+    <complex name="visitors" ref="pdrc_detainees_visitors" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>
     </complex>
 

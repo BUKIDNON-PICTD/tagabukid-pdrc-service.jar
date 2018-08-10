@@ -24,30 +24,31 @@ class TagabukidPDRCDetaineeService
 	@ProxyMethod
 	def initCreate(){
 		def entity = [:];
-		    entity.objid = 'DNO' + new java.rmi.server.UID() +"-"+ dtSvc.getServerDate().year +"-N"
-		    entity.state = "DRAFT"
-		    entity.recordlog = [:]
-		    entity.height = 0
-		    entity.weight = 0
-        entity.detainee = [:]
-        
-		    entity.recordlog.datecreated = dtSvc.serverDate
-        entity.recordlog.createdbyuserid = env.USERID
-        entity.recordlog.createdbyuser = env.FULLNAME
-        entity.recordlog.dateoflastupdate =  dtSvc.serverDate
-        entity.recordlog.lastupdatedbyuserid = env.USERID
-        entity.recordlog.lastupdatedbyuser = env.FULLNAME
 
-        entity.cases = []
-        entity.arrest = []
-        entity.cell = []
-        entity.counsel = []
-        entity.education = []
-        entity.economic= []
-        entity.social = []
-        entity.hearingdetails = []
-        entity.causeofdrop = []
-        entity.visitorslog = []
+            entity.objid     = 'DNO' + new java.rmi.server.UID() +"-"+ dtSvc.getServerDate().year +"-N"
+            entity.state     = "DRAFT"
+            entity.recordlog = [:]
+            entity.height    = 0
+            entity.weight    = 0
+            entity.detainee  = [:]
+
+            entity.recordlog.datecreated         = dtSvc.serverDate
+            entity.recordlog.createdbyuserid     = env.USERID
+            entity.recordlog.createdbyuser       = env.FULLNAME
+            entity.recordlog.dateoflastupdate    = dtSvc.serverDate
+            entity.recordlog.lastupdatedbyuserid = env.USERID
+            entity.recordlog.lastupdatedbyuser   = env.FULLNAME
+
+            entity.cases          = []
+            entity.arrest         = []
+            entity.cell           = []
+            entity.counsel        = []
+            entity.education      = []
+            entity.economic       = []
+            entity.social         = []
+            entity.hearingdetails = []
+            entity.causeofdrop    = []
+            entity.visitors   = []
       
         return entity;
 	}

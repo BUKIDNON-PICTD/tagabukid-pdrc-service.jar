@@ -1,3 +1,4 @@
+
 <schema adapter="tagabukid_pdrc">
   <element tablename="pdrc_edcourse">
 
@@ -5,4 +6,5 @@
 	<field name="course" required="true" searchable="true" indexed="true"/>
 
   </element>
+
 </schema>

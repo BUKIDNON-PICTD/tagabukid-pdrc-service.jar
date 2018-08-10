@@ -1,21 +1,20 @@
+
 <schema adapter="tagabukid_pdrc">
   <element tablename="pdrc_detainees_visitors">
 		
 	<field prefix="DT" primary="true" name="objid"/>		
-	<feild name="objid" primary="true" prefix="DVL"/>
+	<field name="objid" primary="true" prefix="DVL"/>
 	<field name="detaineeid" required="true" searchable="true" visible="false" />
+	<field name="visitor_objid" required="true" visible="false" />
 	<field name="visitor_name" caption="Full Name" searchable="true" required="true"/>
 	<field name="visitor_lastname" caption="Last Name" searchable="true" required="true"/>
 	<field name="visitor_firstname" caption="First Name" searchable="true" required="true"/>
 	<field name="visitor_middlename" caption="Middle Name" searchable="true" required="true"/>
-	<field name="gender" caption="Gender" searchable="true" required="true"/>
-	<field name="citizenship" caption="Citizenship" searchable="true" required="true"/>
-	<field name="visitor_address_objid" required="true" visible="false"/>
+	<field name="visitor_gender" caption="Gender" searchable="true" required="true"/>
+	<complex name="visitor_address" required="true" serializer="default" />
 	<field name="visitor_address_text" caption="Address" searchable="true" required="true"/>
-	<field name="visitor_address_barangayid" searchable="true" required="false" visible="false"/>
-	<field name="visitor_address_municipalityid" searchable="true" required="false" visible="false"/>
 	<field name="datevisited" caption="Date Visited" searchable="true" required="true"/>
-	<field name="relationship" caption="Relationship" searchable="true" required="true"/>
+	<field name="relationship_objid" caption="Relationship" searchable="true" required="true"/>
 	
 	<field name="recordlog_createdbyuserid" required="true" visible="false"/>
 	<field name="recordlog_createdbyuser" required="true" visible="false"/>
@@ -23,6 +22,9 @@
 	<field name="recordlog_lastupdatedbyuserid" required="true" visible="false"/>
 	<field name="recordlog_lastupdatedbyuser" required="true" visible="false"/>
 	<field name="recordlog_dateoflastupdate" required="true" visible="false"/>
-
+	 <complex name="relationship" ref="pdrc_contact_relationships" jointype="many-to-one" required="false">
+            <key field="relationship_objid" target="objid" /> 		
+        </complex>
   </element>
+
 </schema>
