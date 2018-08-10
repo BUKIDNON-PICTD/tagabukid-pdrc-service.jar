@@ -1,0 +1,98 @@
+import com.rameses.annotations.*;
+import com.rameses.common.*;
+import com.rameses.services.extended.*;
+
+
+class TagabukidPDRCDetaineeArrestService
+{
+	
+	@ActiveDB(value='pdrc_detainees_details_arrest', em='tagabukid_pdrc')
+	def em;
+
+	@Env
+	def env;
+
+	@Service('DateService')
+	def dtSvc 
+
+	@Service("SequenceService")
+	def seqSvc;
+
+	@Service("PersistenceService")
+    def persistenceSvc;
+
+	@ProxyMethod
+	def initCreate(){
+		def entity = [:];
+		//entity.objid = 'DNO' + new java.rmi.server.UID() +"-"+ dtSvc.getServerDate().year +"-N"
+		//entity.state = "DRAFT"
+		entity.recordlog = [:]
+    entity.detainee = [:]
+  	entity.recordlog.datecreated = dtSvc.serverDate
+    entity.recordlog.createdbyuserid = env.USERID
+    entity.recordlog.createdbyuser = env.FULLNAME
+    entity.recordlog.dateoflastupdate =  dtSvc.serverDate
+    entity.recordlog.lastupdatedbyuserid = env.USERID
+    entity.recordlog.lastupdatedbyuser = env.FULLNAME
+
+    entity.causeofdrop =[]
+    entity.court = []
+    //entity.cellinfo = []
+    //entity.social = []      
+    return entity;
+
+	}
+
+    @ProxyMethod
+    public def getDetaineeNo(){
+		def appcode = "DNO"
+		def yr      = dtSvc.serverYear;
+		// def mnth    = dtSvc.serverMonth;
+		// def smon    = ( mnth < 10 ) ? "0"+mnth : mnth+"";
+		def prefix  = appcode+yr;
+		return prefix+seqSvc.getNextFormattedSeries(prefix);
+    }
+}
+
+  //  @ProxyMethod
+  // public def getVersionNo(){
+  //		def appcode = "V"
+  //		def yr      = dtSvc.serverYear;
+		// def mnth    = dtSvc.serverMonth;
+		// def smon    = ( mnth < 10 ) ? "0"+mnth : mnth+"";
+	//	def prefix  = appcode+yr;
+//		return prefix+seqSvc.getNextFormattedSeries(prefix);
+  //  }    
+//
+  //  @ProxyMethod
+  //  public def getList( params ) {
+   //     beforeList(params)
+    //    return em.getList(params)
+  //  } 
+
+//    @ProxyMethod
+  //  public def getCountry( o ) {
+    //    o.searchtext+='%'
+      //  return em.getCountry( o );
+  //  }
+
+    //@ProxyMethod
+   // public def loadQuestions( o ) {
+     //   return em.getQuestions();
+   // }
+
+
+ //@ProxyMethod 
+	//public def formatAddress( def x, def delimiter) {
+		// println objid
+		// def municipality = emmain.findMunicipality([objid:objid])
+		// def barangay = persistenceSvc.read([ _schemaname: 'barangay', objid:x.barnagay.objid])
+	//	def txt1 = [x.unitno, x.bldgno, x.bldgname].findAll{ (it? true: false) }.join(" ").trim(); 
+	//	def txt2 = [x.street, x.subdivision].findAll{ (it? true: false) }.join(" ").trim(); 
+	//	def txt3 = [x.barangay?.name, x.city, x.barangay.parent.name, x.province].findAll{ (it? true: false) }.join(", ").trim(); 
+	//	return [txt1, txt2, txt3].findAll{ (it? true: false) }.join( delimiter ).trim();
+//	}
+//    [province:"PROVINCE OF BUKIDNON",type:"local",barangay:[code:"059-15-003",oldpin:null,city:null,indexno:"003",municipality:"MANOLO FORTICH",oldindexno:null,pin:"059-15-003",province:"PROVINCE OF BUKIDNON",objid:"059-15-003",name:"ALAE",state:"DRAFT",lgutype:"barangay",parent:[name:"MANOLO FORTICH",orgclass:"MUNICIPALITY",objid:"059-15"],provcity:[name:"PROVINCE OF BUKIDNON",objid:"059",indexno:"059"],munidistrict:[objid:"059-15",name:"MANOLO FORTICH",indexno:"15"]],text:"ALAE, \nPROVINCE OF BUKIDNON"]
+
+
+

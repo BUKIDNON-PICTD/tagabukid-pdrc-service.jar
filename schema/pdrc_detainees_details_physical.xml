@@ -1,16 +1,16 @@
 <schema adapter="tagabukid_pdrc">
-	<element tablename="pdrc_detainees_details_physical">
+  <element tablename="pdrc_detainees_details_physical">
 		
-		<field name="objid" primary="true" prefix ="DTP" />
-		<field name="detainees_objid" required="true" searchable ="true" />
-		<field name="heightft" required="true" searchable ="true" />
-		<field name="weightkg" required="true" searchable ="true" />
-		<field name="eyecolor" required="true" searchable ="true" />
-		<field name="haircolor" required="true" searchable ="true" />
-		<field name="bodybuild" required="true" searchable ="true" />
-		<field name="complexion" required="true" searchable ="true" />
-		<field name="scarsandmarks" required="true" searchable ="true" />
-		<field name="peculiarities" required="true" searchable ="true" />
+	<field name="objid" primary="true" prefix ="DTP" />
+	<field name="detainees_objid" required="true" searchable ="true" />
+	<field name="heightft" required="true" searchable ="true" />
+	<field name="weightkg" required="true" searchable ="true" />
+	<field name="eyecolor" required="true" searchable ="true" />
+	<field name="haircolor" required="true" searchable ="true" />
+	<field name="bodybuild" required="true" searchable ="true" />
+	<field name="complexion" required="true" searchable ="true" />
+	<field name="scarsandmarks" required="true" searchable ="true" />
+	<field name="peculiarities" required="true" searchable ="true" />
 
-	</element>
+  </element>
 </schema>

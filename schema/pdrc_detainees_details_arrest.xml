@@ -1,0 +1,21 @@
+<schema adapter="tagabukid_pdrc">
+  <element tablename="pdrc_detainees_details_arrest">
+
+    <feild name="objid" primary="true" prefix="DTA"/>
+    <field name="detaineeid" required="true" searchable="true" visible="false" />
+    <feild name="dateofarrest" required="true" searchble="true"/>
+    <feild name="timeofarrest" required="true" searchble="true"/>
+    <feild name="arrestingofficial" required="true" searchble="true"/>
+    <feild name="dateofcommitment" required="true" searchble="true"/>
+    <feild name="dateofsentence" required="true" searchble="true"/>
+    <feild name="servingsentence" required="true" searchble="true"/>
+    <feild name="ismentalproblem" required="true" searchble="true"/>
+    <feild name="datereleasedorwaive" required="true" searchble="true"/>
+    <feild name="type" required="true" searchble="true"/>
+    <feild name="remarks" required="true" searchble="true"/>
+    <feild name="officeid" required="true" searchble="true"/>
+    
+    <complex name="placeofarrest" required="false" serializer="default" /> 
+
+	</element>
+</schema>

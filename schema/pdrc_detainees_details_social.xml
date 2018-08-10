@@ -1,9 +1,14 @@
 <schema adapter="tagabukid_pdrc">
-	<element tablename="pdrc_detainees_details_social">
+  <element tablename="pdrc_detainees_details_social">
 		
-		<field name="objid" primary="ture" prefix="DTS" />
-		<field name="detainees_objid" required="ture" searchable="true" />
-		<field name="organization" required="ture" searchable="true" />
+	<field name="objid" primary="true" prefix="DTS" />
+	<field name="detaineeid" required="true" searchable="true" visible="false" />
+	<field name="social_objid" required="true" searchable="true" />
 
-	</element>
+	<complex name="social" ref="pdrc_social" jointype="many-to-one" required="false">
+       <key field="social_objid" target="objid" /> 
+	</complex>
+
+  </element>
 </schema>
+
