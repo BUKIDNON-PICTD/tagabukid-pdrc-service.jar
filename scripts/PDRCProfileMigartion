@@ -1,0 +1,1632 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import java.rmi.server.UID;
+import com.rameses.util.*;
+
+class PDRCProfileMigartion {
+	
+	@PersistenceContext('main')
+	def main
+
+	@ActiveDB("entityindividual")
+	def	emind; 
+
+	@ActiveDB("entityjuridical")
+	def	emjur; 
+
+	@ActiveDB('entity_address')
+	def emaddress
+
+	@Service('EntityService')
+	def entitySvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service('SequenceService')
+	def seqSvc;
+
+	@PersistenceContext("tagabukid_pdrc")
+	def empdrc; 
+
+
+	@Service("PersistenceService")
+    def persistenceService;
+
+	@Service("TagabukidHRMISPDSService")
+	def empds
+
+    @PersistenceContext('postgrehrmis')
+	def emposthrmis
+
+    @Service()
+	def self 
+
+	// @ProxyMethod
+	// public void migrateEntity(entityid){
+	// 	def entity = em22.sqlContext.createQuery('''
+	// 		SELECT * FROM entity WHERE objid = $P{objid}
+	// 		''').setParameter('objid',entityid).singleResult;
+
+	
+	// 	entity.info = em22.serializer.read(entity.info);
+
+
+	// 	if( 'individual'.equals(entity.entitytype) ) {
+	// 		// buildEntity(entity)
+	// 		buildEntityIndividual(entity) 
+	// 	}
+	// 	else if( 'multiple'.equals(entity.entitytype) ) {
+	// 		// buildEntity(entity)
+
+	// 		def members = em22.sqlContext.createQuery('''
+	// 		SELECT * FROM entitymember WHERE entityid = $P{objid}
+	// 		''').setParameter('objid',entity.objid).resultList;
+			
+	// 		if (members.size() > 1){
+	// 			entity.members = buildEntityMember(members)
+	// 		}else{
+	// 			entity.members = buildMissingMember(entity)
+	// 		}				
+	// 		buildEntityMultiple(entity) 
+			
+			
+	// 	}
+	// 	else if( 'juridical'.equals(entity.entitytype) ) {
+	// 		// buildEntity(entity)
+	// 		buildEntityJuridical(entity) 
+	// 	}
+	// 	else {
+	// 		throw new Exception("Entity Type ${entity.entitytype} is not defined.")
+	// 	}
+
+	// }
+
+	public def getProfileToMigrate(){
+
+		def profiles = empdrc.sqlContext.createQuery('''
+			SELECT objid FROM xxxmigratedprofile
+		''').resultList;
+		
+		def entity = empdrc.sqlContext.createQuery('''
+			SELECT * FROM pdrcdata.tbldetainees
+			WHERE PrisonNo NOT IN (${profiles})
+			LIMIT 25;
+			''').setVars([profiles:"'"+profiles.objid.join("','")+"'"]).resultList;
+		return entity
+	}
+
+	
+	@ProxyMethod
+	public def migrateEntityArray(){
+
+		def entity = getProfileToMigrate();
+		// println entity.PersonId
+		def newentity = entity.collect{
+		    [
+		        info:[
+		        		
+		                lastname     : it.Name.LastName,
+		                firstname    : it.Name.FirstName,
+		                middlename   : it.Name.MiddleName,
+		                nameextension: it.Name.NameExtension,
+		                prenametitle : it.Name.PreNameTitle,
+		                postnametitle: it.Name.PostNameTitle,
+		                birthdate    : it.Birthday,
+		                birthpalce   : it.birthplace,
+		                citizenship  : (it.nationality?it.nationality:"-"),
+		                gender       : (it.Gender == 0 ? 'M':'F'),
+		                civilstatus  : it.civilstatus,
+		                profession   : null,
+		                tin          : it.TIN,
+		                sss          : it.SSSId,
+		                height       : it.HeightMeters,
+		                weight       : it.WeightKg,
+		                mobileno     : it.Contacts.Mobile,
+		                landline     : it.Contacts.Landline,
+		                email        : it.Contacts.Email,
+		                name         : it.Name.LastName + ", " + ((it.Name.NameExtension != "") && (it.Name.NameExtension != null) ? it.Name.NameExtension + ", " : "") + it.Name.FirstName + " " + it.Name.MiddleName,
+		            ],
+	            name          : it.Name.LastName + ", " + ((it.Name.NameExtension != "") && (it.Name.NameExtension != null) ? it.Name.NameExtension + ", " : "") + it.Name.FirstName + " " + it.Name.MiddleName,
+	            address_text  : null,
+	            mailingaddress: null,
+	            entitytype    : 'INDIVIDUAL',
+	            entityname    : it.Name.LastName + ", " + ((it.Name.NameExtension != "") && (it.Name.NameExtension != null) ? it.Name.NameExtension + ", " : "") + it.Name.FirstName + " " + it.Name.MiddleName,
+	            entityaddress : null,
+	            street        : it.PermanentAddress.AddressDetails,
+	            barangayname  : it.barangay,
+	            muncity       : it.muncity,
+	            profileid     : it.PersonId.toString(),
+	            barangaypsgc  : it.psgccode,
+	            raw           : it
+
+		    ]
+		}
+		newentity.each{
+			if(isProfileMigrated(it.profileid)){
+				println "Updating Profile " + it.profileid
+				it.objid = emhrmis.sqlContext.createQuery('''
+					SELECT objid FROM hrmis_entity
+					WHERE profileid = $P{profileid}
+				''').setParameter('profileid',it.profileid).singleResult.objid;
+
+				it.newentityindividual = updateEntity(it)
+			}else{
+				def x = isEntityExist(it)
+				if(x){
+					println "Updating Existing ENtity " + it.profileid
+					it.objid               = x.objid
+					it.newentityindividual = updateEntity(it)
+				}else{
+					println "Migrating Profile " + it.profileid
+					it.newentityindividual = addEntity(it)
+				} 
+				emhrmis.sqlContext.createExecutor('''
+					INSERT INTO hrmis_entity (objid,profileid) VALUES ($P{objid},$P{profileid});
+				''')
+				.setParameter('objid', it.newentityindividual.objid)
+				.setParameter('profileid', it.profileid)
+				.execute();
+			}
+			
+			if(isPDSMigrated(it.profileid)){
+				println "Updating PDS " + it.profileid
+				updatePDS(it);
+			}else{
+				println "Migrating PDS " + it.profileid
+				addPDS(it);
+			}
+
+			// println it
+
+			 emhrmis.sqlContext.createExecutor('''
+				INSERT INTO xxxmigratedprofile (objid) VALUES ($P{profileid});
+			''')
+			.setParameter('profileid', it.profileid)
+			.execute();
+
+		}
+		// println "Done"
+		return entity.size()
+		
+		// buildEntity(entity)
+		// buildEntityIndividual(entity) 
+
+	}
+
+	void updatePDS(o){
+		def pds                               = [:]
+		    pds._schemaname                   = 'hrmis_pds'
+		    pds.objid                         = o.raw.PersonId.toString()
+		    pds                               = persistenceService.read(pds)
+		    pds.person                        = o.newentityindividual
+		    pds.nameextension                 = o.raw.Name.NameExtension
+		    pds.prenametitle                  = o.raw.Name.PreNameTitle
+		    pds.postnametitle                 = o.raw.Name.PostNameTitle
+		  	pds.residential                   = [address:o.newentityindividual.address]
+			pds.permanent                     = [address:o.newentityindividual.address]
+		    pds.height                        = o.raw.HeightMeters
+		    pds.weight                        = o.raw.WeightKg
+		    pds.bloodtype                     = ["NA", "A", "B", "AB", "O"][o.raw.BloodType]
+		    pds.gsisid                        = o.raw.GSISId
+		    pds.pagibigid                     = o.raw.PagIbigId
+		    pds.philhealth                    = o.raw.PhilHealthId
+		    pds.sss                           = o.raw.SSSId
+		    pds.tin                           = o.raw.TIN
+		    pds.employeeno                    = o.raw.AgencyEmployeeNo
+		    pds.recordlog.createdbyuserid     = "ADMIN"
+		    pds.recordlog.createdbyuser       = "ADMIN"
+		    pds.recordlog.lastupdatedbyuserid = "ADMIN"
+		    pds.recordlog.lastupdatedbyuser   = "ADMIN"
+		//items
+		pds.pdsquestions      = getPDSQ(o)
+		pds.civilserviceInfos = getCivilService(o)
+		pds.familyfatherInfos = getfamilyfatherInfos(o)
+		pds.familymotherInfos = getfamilymotherInfos(o)
+		pds.familyspouseInfos = getfamilyspouseInfos(o)
+		pds.familychildInfos  = getfamilychildInfos(o)
+		pds.educationalInfos  = geteducationalInfos(o)
+		pds.organizations     = getorganizations(o)
+		pds.workexperienceInfos = getworkexperienceInfos(o)
+		pds.voluntaryworks = getvoluntaryworks(o)
+		pds.trainings = gettrainings(o)
+		pds.skills = getskills(o)
+		pds.recognitions = getrecognitions(o)
+		pds.references = getreferences(o)
+
+		pds._schemaname = 'hrmis_pds'
+
+		// println pds.trainings
+		persistenceService.update(pds)
+	}
+
+	void addPDS(o){
+	
+		def pds = empds.initCreate()
+
+		pds._schemaname                   = 'hrmis_pds'
+		pds.objid                         = o.raw.PersonId.toString()
+		pds.person                        = o.newentityindividual
+		pds.nameextension                 = o.raw.Name.NameExtension
+		pds.prenametitle                  = o.raw.Name.PreNameTitle
+		pds.postnametitle                 = o.raw.Name.PostNameTitle
+		pds.residential                   = [address:o.newentityindividual.address]
+		pds.permanent                     = [address:o.newentityindividual.address]
+		pds.height                        = o.raw.HeightMeters
+		pds.weight                        = o.raw.WeightKg
+		pds.bloodtype                     = ["NA", "A", "B", "AB", "O"][o.raw.BloodType]
+		pds.gsisid                        = o.raw.GSISId
+		pds.pagibigid                     = o.raw.PagIbigId
+		pds.philhealth                    = o.raw.PhilHealthId
+		pds.sss                           = o.raw.SSSId
+		pds.tin                           = o.raw.TIN
+		pds.employeeno                    = o.raw.AgencyEmployeeNo
+		pds.recordlog.createdbyuserid     = "ADMIN"
+		pds.recordlog.createdbyuser       = "ADMIN"
+		pds.recordlog.lastupdatedbyuserid = "ADMIN"
+		pds.recordlog.lastupdatedbyuser   = "ADMIN"
+		//items
+		pds.pdsquestions      = getPDSQ(o)
+		pds.civilserviceInfos = getCivilService(o)
+		pds.familyfatherInfos = getfamilyfatherInfos(o)
+		pds.familymotherInfos = getfamilymotherInfos(o)
+		pds.familyspouseInfos = getfamilyspouseInfos(o)
+		pds.familychildInfos  = getfamilychildInfos(o)
+		pds.educationalInfos  = geteducationalInfos(o)
+		pds.organizations     = getorganizations(o)
+		pds.workexperienceInfos = getworkexperienceInfos(o)
+		pds.voluntaryworks = getvoluntaryworks(o)
+		pds.trainings = gettrainings(o)
+		pds.skills = getskills(o)
+		pds.recognitions = getrecognitions(o)
+		pds.references = getreferences(o)
+
+
+		pds.pdsno     = empds.getPDSNo();
+		pds.versionno = empds.getVersionNo();
+
+		
+		persistenceService.create(pds)
+
+	}
+
+	public def getreferences(o){
+		
+		def references =  emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(p."Id" AS VARCHAR) AS "objid",p.*,
+			m."Name" AS "munname",
+			b."Name" AS "barname"
+			FROM "hrmis"."tblProfileDataReferencePerson" p
+			INNER JOIN "references"."tblLocBarangay" b ON b."Id" = p."BarangayAddressId"
+			INNER JOIN "references"."tblLocCityMunicipality" m ON m."Id" =  b."CityMunicipalityId"
+			WHERE p."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+		// println child
+		references.each{
+			it.reference         = addorupdateReferenceEntity(it)
+			it.nameextension = it.PersonName.NameExtension ? it.PersonName.NameExtension.toUpperCase() : null
+			it.prenametitle  = it.PersonName.PreNameTitle ? it.PersonName.PreNameTitle.toUpperCase() : null
+			it.postnametitle = it.PersonName.PostNameTitle ? it.PersonName.PostNameTitle.toUpperCase() : null
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+		
+		return references
+	}
+
+
+	public def getfamilychildInfos(o){
+		
+		def child =  emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(o."Id" AS VARCHAR) AS "objid", o.* FROM "hrmis"."tblProfileOffspring" o
+			WHERE o."ParentId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+		// println child
+		child.each{
+			it.child         = addorupdateChildEntity(it)
+			it.nameextension = it.Name.Extension ? it.Name.Extension.toUpperCase() : null
+			it.prenametitle  = it.Name.TitlePre ? it.Name.TitlePre.toUpperCase() : null
+			it.postnametitle = it.Name.TitlePost ? it.Name.TitlePost.toUpperCase() : null
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+		
+		return child
+	}
+	
+	public def getfamilyspouseInfos(o){
+		
+		def spouse =  emposthrmis.sqlContext.createQuery('''
+			SELECT p.*,
+			CAST(p."Id" AS VARCHAR) AS "objid",
+			sp."SpouseId",
+			sp."Occupation",
+			sp."EmployerOrBusinessName",
+			sp."MunicipalityId",
+			sp."BusinessAddressDetails_AddressDetails",
+			sp."BusinessAddressDetails_ZipCode",
+			sp."SpouseEmployerOrBusinessNameContact_Landline",
+			sp."SpouseEmployerOrBusinessNameContact_Mobile",
+			sp."SpouseEmployerOrBusinessNameContact_Email",
+			sp."SpouseEmployerOrBusinessNameContact_Fax" 
+			FROM "hrmis"."tblProfileSpouse" p
+			LEFT  JOIN "hrmis"."tblProfileSpouseOccupation" sp ON sp."SpouseId" = p."Id"
+			WHERE p."PartnerId"                                                 = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+		
+		spouse.each{
+				it.spouse        = addorupdateSpouseEntity(it)
+				it.nameextension = it.Name.NameExtension ? it.Name.NameExtension.toUpperCase() : null
+				it.prenametitle  = it.Name.PreNameTitle ? it.Name.PreNameTitle.toUpperCase() : null
+				it.postnametitle = it.Name.PostNameTitle ? it.Name.PostNameTitle.toUpperCase() : null
+				
+				it.occupation   = it.Occupation ? it.Occupation.toUpperCase() : null
+				it.businessname = it.EmployerOrBusinessName ? it.EmployerOrBusinessName.toUpperCase() : null
+				it.businessadd  = [text:it.BusinessAddressDetails.AddressDetails ? it.BusinessAddressDetails.AddressDetails.toUpperCase() : null]
+				it.recordlog    = [
+					datecreated        : dateSvc.serverDate,
+					dateoflastupdate   : dateSvc.serverDate,
+					createdbyuserid    : "ADMIN",
+					createdbyuser      : "ADMIN",
+					lastupdatedbyuserid: "ADMIN",
+					lastupdatedbyuser  : "ADMIN"
+				]
+		}
+		
+		return spouse
+	}
+
+
+	public def getfamilyfatherInfos(o){
+		def father =  emposthrmis.sqlContext.createQuery('''
+			SELECT 
+			CAST(ed."PersonDetailId" AS VARCHAR) AS "objid",
+			CAST(p."PersonId" AS VARCHAR) AS "pdsid",
+			ed.*
+			FROM "hrmis"."tblProfile" p
+			INNER JOIN "hrmis"."tblProfileDetails" ed ON ed."PersonDetailId" = p."PersonId"
+			WHERE p."PersonId"                                               = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+		father.removeAll(father.findAll{it.Father.LastName == "" || it.Father.FirstName == "" || it.Father.LastName == null})
+		father.each{
+			it.father        = addorupdateFatherEntity(it)
+			it.nameextension = it.Father.NameExtension == null ? null : it.Father.NameExtension.toUpperCase()
+			it.prenametitle  = it.Father.PreNameTitle == null ? null : it.Father.PreNameTitle.toUpperCase()
+			it.postnametitle = it.Father.PostNameTitle == null ? null : it.Father.PostNameTitle.toUpperCase()
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+
+		return father
+	}
+
+	public def getfamilymotherInfos(o){
+		def mother =  emposthrmis.sqlContext.createQuery('''
+			SELECT 
+			CAST(ed."PersonDetailId" AS VARCHAR) AS "objid",
+			CAST(p."PersonId" AS VARCHAR) AS "pdsid",
+			ed.*
+			FROM "hrmis"."tblProfile" p
+			INNER JOIN "hrmis"."tblProfileDetails" ed ON ed."PersonDetailId" = p."PersonId"
+			WHERE p."PersonId"                                               = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+		mother.removeAll(mother.findAll{it.Mother.LastName == "" || it.Mother.FirstName == "" || it.Mother.LastName == null})
+		mother.each{
+			it.mother        = addorupdateMotherEntity(it)
+			it.maidenname    = it.Mother.LastName.toUpperCase()
+			it.nameextension = it.Mother.NameExtension == null ? null : it.Mother.NameExtension.toUpperCase()
+			it.prenametitle  = it.Mother.PreNameTitle == null ? null : it.Mother.PreNameTitle.toUpperCase()
+			it.postnametitle = it.Mother.PostNameTitle == null ? null : it.Mother.PostNameTitle.toUpperCase()
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]	
+		}
+
+		return mother
+	}
+
+	public def getPDSQ(o){
+		return emposthrmis.sqlContext.createQuery('''
+			SELECT 
+			CAST(q."Id" AS VARCHAR) AS "objid",
+			CAST(p."PersonId" AS VARCHAR) AS "pdsid",
+			CAST(q."PDSQId" AS VARCHAR) AS "pdsq_objid",
+			CASE q."Answer" WHEN true THEN 1 ELSE 0 END AS "answer",
+			q."AnswerDetails" AS "details"
+			FROM "hrmis"."tblProfile" p
+			INNER JOIN "hrmis"."tblProfileAnsToPDSQs" q ON q."PersonId" = p."PersonId"
+			WHERE p."PersonId"                                          = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList.each{
+				it.recordlog     = [
+					datecreated        : dateSvc.serverDate,
+					dateoflastupdate   : dateSvc.serverDate,
+					createdbyuserid    : "ADMIN",
+					createdbyuser      : "ADMIN",
+					lastupdatedbyuserid: "ADMIN",
+					lastupdatedbyuser  : "ADMIN"
+				]
+			}
+	}
+
+	public def getCivilService(o){
+		return emposthrmis.sqlContext.createQuery('''
+			SELECT 
+			CAST(el."Id" AS VARCHAR) AS "objid",
+			CAST(p."PersonId" AS VARCHAR) AS "pdsid",
+			CAST(et."Id" AS VARCHAR) AS "eligibility_objid",
+			el."Rating" AS "rating",
+			CAST(el."ExamOrConfirmationDate" AS VARCHAR) AS "examinationdate",
+			mm."Name" AS "examinationaddress",
+			el."LicenseNumber" AS "licenseno",
+			CAST(el."ReleaseDate" AS VARCHAR) AS "validitydate"
+			FROM "hrmis"."tblProfile" p
+			INNER JOIN "hrmis"."tblProfileEligibility" el ON el."PersonId" = p."PersonId"
+			INNER JOIN "references"."tblEligibility" et ON et."Id" = el."EligibilityId"
+			LEFT  JOIN "references"."tblLocCityMunicipality" mm ON mm."Id" = el."PlaceOfExamOrConfermationCityMunId"
+			WHERE p."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList.each{
+				it.recordlog     = [
+					datecreated        : dateSvc.serverDate,
+					dateoflastupdate   : dateSvc.serverDate,
+					createdbyuserid    : "ADMIN",
+					createdbyuser      : "ADMIN",
+					lastupdatedbyuserid: "ADMIN",
+					lastupdatedbyuser  : "ADMIN"
+				]
+			}
+	}
+
+	public def geteducationalInfos(o){
+		return emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(e."Id" AS VARCHAR) AS "objid",
+			e."EducationalLevel" AS "level",
+			CAST(e."EducationalInstitutionId" AS VARCHAR) AS "school_objid",
+			CAST(e."CourseId" AS VARCHAR) AS "course_objid",
+			CAST(e."CourseMajorId" AS VARCHAR) AS "major_objid",
+			e."YearGraduated" AS "yeargraduated",
+			e."HighestGradeLevelOrUnitsEarned" AS "levelunitearned",
+			e."InclusiveYearOfAttendanceFrom" AS "from",
+			e."InclusiveYearOfAttendanceTo" AS "to",
+			e."HonorsScholarshipReceived" AS "scholarshipacademic"
+			FROM "hrmis"."tblProfileEducationalBackground" e
+			WHERE e."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList.each{
+				it.level = ['NONE', 'PRESCHOOL', 'PRIMARY', 'JUNIORHIGH', 'SENIORHIGH', 'TERTIARY', 'POSTGRADUATE', 'SECONDARY', 'VOCATIONAL'][it.level]
+				it.recordlog     = [
+					datecreated        : dateSvc.serverDate,
+					dateoflastupdate   : dateSvc.serverDate,
+					createdbyuserid    : "ADMIN",
+					createdbyuser      : "ADMIN",
+					lastupdatedbyuserid: "ADMIN",
+					lastupdatedbyuser  : "ADMIN"
+				]
+			}
+	}
+
+	public def getorganizations(o){
+		def orgs = emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(a."Id" AS VARCHAR) AS "objid",
+			a."Name"
+			FROM "hrmis"."tblProfileAffiliation" a
+			WHERE a."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+
+		orgs.each{
+			it.affiliation =  emhrmis.sqlContext.createQuery('''
+			SELECT objid FROM references_tblaffiliation WHERE name = $P{name}
+			''').setParameter('name',it.Name).singleResult;
+
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+
+		return orgs
+	}
+
+	public def getworkexperienceInfos(o){
+		def workexperience = emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(w."Id" AS VARCHAR) AS "objid",
+			w."Institution" AS "institution",
+			CAST(w."InstitutionTypeId" AS VARCHAR) AS "institutiontype_objid",
+			CAST(w."JobPositionId" AS VARCHAR) AS "jobposition_objid",
+			CAST(w."DateFrom" AS VARCHAR) AS "from",
+			CAST(w."DateTo" AS VARCHAR) AS "to",
+			w."MonthlySalary" AS "monthlysalary",
+			CAST(w."PayGradeAndStepIncrementId" AS VARCHAR) AS "paygradestepincrement_objid",
+			CAST(w."EmploymentStatusId" AS VARCHAR) AS "employmentstatus_objid",
+			w."IsGovernmentService" AS "isgovservice"
+			FROM "hrmis"."tblProfileWorkExperience" w
+			WHERE w."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList.each{
+				it.recordlog     = [
+					datecreated        : dateSvc.serverDate,
+					dateoflastupdate   : dateSvc.serverDate,
+					createdbyuserid    : "ADMIN",
+					createdbyuser      : "ADMIN",
+					lastupdatedbyuserid: "ADMIN",
+					lastupdatedbyuser  : "ADMIN"
+				]
+			}
+
+		
+
+
+		return workexperience
+	}
+
+	public def getvoluntaryworks(o){
+		def voluntaryworks = emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(v."Id" AS VARCHAR) AS "objid",
+			v."OrganizationName" AS "organizationname",
+			CAST(v."InstitutionTypeId" AS VARCHAR) AS "institutiontype_objid",
+			NULL AS "organization_address",
+			CAST(m."Name" AS VARCHAR) AS "organization_address_text",
+			v."DateFrom" AS "datefrom",
+			v."DateTo" AS "dateto",
+			v."NumberOfHours" AS "numberofhours",
+			v."PositionOrNatureOfWork" AS "positionornatureofwork",
+			CAST(v."PositionOrNatureOfWorkCategoryId" AS VARCHAR) AS "positionornatureofworkcategory_objid"
+			FROM "hrmis"."tblProfileVoluntaryWork" v
+			INNER JOIN "references"."tblLocCityMunicipality" m ON m."Id" = v."MunCityAddrId"
+			WHERE v."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+
+		voluntaryworks.each{
+			it.voluntarywork =  emhrmis.sqlContext.createQuery('''
+			SELECT objid FROM references_tblvoluntarywork WHERE name = $P{name}
+			''').setParameter('name',it.organizationname).singleResult;
+			
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+
+
+		return voluntaryworks
+	}
+
+	public def gettrainings(o){
+		def trainings = emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(t."Id" AS VARCHAR) AS "objid",
+			t."TrainingTitle",
+			CAST(t."AttendanceFrom" AS VARCHAR) AS "attendedfrom",
+			CAST(t."AttendanceTo" AS VARCHAR) AS "attendedto",
+			t."NumberOfHours" AS "numberofhours",
+			t."Sponsor" AS "sponsor"
+			FROM "hrmis"."tblProfileTrainingProgramAttended" t
+			WHERE t."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+		
+		trainings.each{
+			// println it.TrainingTitle
+			it.training =  emhrmis.sqlContext.createQuery('''
+			SELECT objid FROM references_tbltraining WHERE name = $P{name}
+			''').setParameter('name',it.TrainingTitle).singleResult;
+			
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+		trainings.removeAll(trainings.findAll{!it.training})
+
+		return trainings
+	}
+
+	public def getskills(o){
+		def skills = emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(s."Id" AS VARCHAR) AS "objid",
+			s."Skill" AS "skill"
+			FROM "hrmis"."tblProfileSkill" s
+			WHERE s."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+
+		skills.each{
+			it.skill =  emhrmis.sqlContext.createQuery('''
+			SELECT objid FROM references_tblskill WHERE name = $P{name}
+			''').setParameter('name',it.skill).singleResult;
+
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+
+
+		return skills
+	}
+
+	public def getrecognitions(o){
+		def recognitions = emposthrmis.sqlContext.createQuery('''
+			SELECT CAST(r."Id" AS VARCHAR) AS "objid",
+			r."Recognition" AS "recognition"
+			FROM "hrmis"."tblProfileNonAcademicRecognition" r
+			WHERE r."PersonId" = $P{profileid}
+			''').setParameter('profileid',o.raw.PersonId).resultList;
+
+		recognitions.each{
+			it.recognition =  emhrmis.sqlContext.createQuery('''
+			SELECT objid FROM references_tblnonacademicrecognition WHERE name = $P{name}
+			''').setParameter('name',it.recognition).singleResult;
+
+			it.recordlog     = [
+				datecreated        : dateSvc.serverDate,
+				dateoflastupdate   : dateSvc.serverDate,
+				createdbyuserid    : "ADMIN",
+				createdbyuser      : "ADMIN",
+				lastupdatedbyuserid: "ADMIN",
+				lastupdatedbyuser  : "ADMIN"
+			]
+		}
+
+
+		return recognitions
+	}
+// 	void buildEntity(entity){
+// 		entity.objid = (entity.objid ? entity.objid:new UID()).toString()
+// 		def eaddress = buildEntityAddress(entity)
+//     	eaddress.text = entity.entityaddress
+// 		def e = [
+// 			objid             : entity.objid,
+// 			// entityno       : prefix + seqSvc.getNextFormattedSeries( stype+ "_ENTITY" ),
+// 			name              : entity.entityname,
+// 			mailingaddress    : entity.entityaddress,
+// 			type              : entity.entitytype,
+// 			//sys_lastupdate  : dateSvc.buildCustomTimeStamp(dateSvc.serverDate),
+// 			//sys_lastupdateby: 'ETRACSADMIN',
+// 			remarks           : null,
+// 			entityname        : entity.entityname,
+// 			mobileno          : null,
+// 			phoneno           : null,
+// 			email             : null,
+// 			address           : eaddress
+// 		]
+// 		// // entitySvc.save(e)
+// 		// // println "TAE"*50
+// 		// // println e
+// 		// e._schemaname = 'entityindividual';
+//   //       persistenceService.create( e );
+
+	
+// 		//emaddress.create(eaddress)
+// 	}
+
+	// def buildEntityAddress(entity){
+		
+	// 	def entityaddress = [
+	// 		objid        	: 'A' + new UID(),
+	// 		parentid		: entity.objid,
+	// 		type    		: 'nonlocal',
+	// 		addresstype  	: null,
+	// 		barangay_objid  : null,
+	// 		barangay_name  	: null,
+	// 		city  			: null,
+	// 		municipality 	: null,
+	// 		province 		: null,
+	// 		bldgno			: null,
+	// 		bldgname		: null,
+	// 		unitno			: null,
+	// 		street			: null,
+	// 		subdivision		: null,
+	// 		pin 			: null
+	// 	]
+	// 	def address = entity.entityaddress.split(',')
+	// 	def barangay = address[0];
+		
+	// 	boolean hasWhiteSpace = containsWhiteSpace(barangay);
+	// 	if(hasWhiteSpace){
+	// 		barangay = barangay.split(' ')[0]
+	// 	}
+
+	// 	barangay = barangay + '%'
+
+	// 	def addressinfo = main.sqlContext.createQuery('''
+	// 		SELECT * FROM sys_org WHERE name LIKE $P{address_text} AND orgclass = 'BARANGAY'
+	// 		''').setParameter('address_text',barangay).singleResult;
+	// 	if (addressinfo){
+			
+	// 		entityaddress.barangay_objid = addressinfo.objid
+	// 		entityaddress.barangay_name = addressinfo.name
+				
+	// 		def municipalityinfo = main.sqlContext.createQuery('''
+	// 		SELECT * FROM sys_org WHERE objid = $P{objid}
+	// 		''').setParameter('objid',addressinfo.parent.objid).singleResult;		
+
+	// 		entityaddress.municipality = municipalityinfo.name
+
+	// 		def provinceinfo = main.sqlContext.createQuery('''
+	// 		SELECT * FROM sys_org WHERE objid = $P{objid}
+	// 		''').setParameter('objid',municipalityinfo.parent.objid).singleResult;	
+
+	// 		entityaddress.province = provinceinfo.name	
+	// 		entityaddress.type = 'local'
+	// 	}else{
+	// 		if (address.grep('CITY')){
+	// 			entityaddress.city = entity.entityaddress
+	// 			entityaddress.addresstype = 'CITY'
+	// 		}else{
+	// 			entityaddress.municipality = entity.entityaddress
+	// 			entityaddress.addresstype = 'MUNICIPALITY'
+	// 		}
+
+	// 	}
+		
+	// 	return entityaddress
+	
+	// }
+	public def addorupdateFatherEntity(o){
+		def x = isEntityExist2([lastname:o.Father.LastName,firstname:o.Father.FirstName,middlename:o.Father.MiddleName])
+		// println x
+		if(x){
+			def existingentity            = persistenceService.read([_schemaname:'entityindividual',objid:x.objid]);
+			    existingentity.lastname   = o.Father.LastName ?  o.Father.LastName.toUpperCase() : null
+			    existingentity.firstname  = o.Father.FirstName ?  o.Father.FirstName.toUpperCase() : null
+			    existingentity.middlename = o.Father.MiddleName ?  o.Father.MiddleName.toUpperCase() : null
+				def address =[
+					objid         : existingentity.address.objid,
+					parentid 	  : existingentity.objid,
+					type          : 'nonlocal',
+					addresstype   : null,
+					barangay_objid: null,
+					barangay_name : null,
+					city          : null,
+					municipality  : null,
+					province      : null,
+					bldgno        : null,
+					bldgname      : null,
+					unitno        : null,
+					street        : null,
+					subdivision   : null,
+					pin           : null,
+					text          : '-'
+				]
+				emaddress.save(address)
+			return persistenceService.update([_schemaname:'entityindividual',objid:existingentity.objid]);
+		}else{
+			// def eaddress = newbuildEntityAddress(entity)
+			// eaddress.text = entity.entityaddress.text
+			def entityindividual = [
+				objid     : 'I' + new UID(),
+				lastname  : o.Father.LastName ?  o.Father.LastName.toUpperCase() : null,
+				firstname : o.Father.FirstName ?  o.Father.FirstName.toUpperCase() : null,
+				middlename: o.Father.MiddleName ?  o.Father.MiddleName.toUpperCase() : null,
+				gender    : 'MALE',
+				
+			]
+
+			def address =[
+				objid         : 'A' + new UID(),
+				type          : 'nonlocal',
+				addresstype   : null,
+				barangay_objid: null,
+				barangay_name : null,
+				city          : null,
+				municipality  : null,
+				province      : null,
+				bldgno        : null,
+				bldgname      : null,
+				unitno        : null,
+				street        : null,
+				subdivision   : null,
+				pin           : null,
+				text          : '-'
+			]
+			entityindividual.address = address
+
+			
+			entityindividual._schemaname = 'entityindividual';
+			return persistenceService.create( entityindividual );
+		}
+	}
+
+	public def addorupdateMotherEntity(o){
+		def x = isEntityExist2([lastname:o.Mother.LastName,firstname:o.Mother.FirstName,middlename:o.Mother.MiddleName])
+		// println x
+		if(x){
+			def existingentity            = persistenceService.read([_schemaname:'entityindividual',objid:x.objid]);
+			    existingentity.lastname   = o.Mother.LastName ?  o.Mother.LastName.toUpperCase() : null
+			    existingentity.firstname  = o.Mother.FirstName ?  o.Mother.FirstName.toUpperCase() : null
+			    existingentity.middlename = o.Mother.MiddleName ?  o.Mother.MiddleName.toUpperCase() : null
+				def address =[
+					objid         : existingentity.address.objid,
+					parentid 	  : existingentity.objid,
+					type          : 'nonlocal',
+					addresstype   : null,
+					barangay_objid: null,
+					barangay_name : null,
+					city          : null,
+					municipality  : null,
+					province      : null,
+					bldgno        : null,
+					bldgname      : null,
+					unitno        : null,
+					street        : null,
+					subdivision   : null,
+					pin           : null,
+					text          : '-'
+				]
+				emaddress.save(address)
+			return persistenceService.update([_schemaname:'entityindividual',objid:existingentity.objid]);
+		}else{
+			// def eaddress = newbuildEntityAddress(entity)
+			// eaddress.text = entity.entityaddress.text
+			def entityindividual = [
+				objid     : 'I' + new UID(),
+				lastname  : o.Mother.LastName ?  o.Mother.LastName.toUpperCase() : null,
+				firstname : o.Mother.FirstName ?  o.Mother.FirstName.toUpperCase() : null,
+				middlename: o.Mother.MiddleName ?  o.Mother.MiddleName.toUpperCase() : null,
+				gender    : 'FEMALE',
+				
+				
+			]
+
+			def address =[
+				objid         : 'A' + new UID(),
+				type          : 'nonlocal',
+				addresstype   : null,
+				barangay_objid: null,
+				barangay_name : null,
+				city          : null,
+				municipality  : null,
+				province      : null,
+				bldgno        : null,
+				bldgname      : null,
+				unitno        : null,
+				street        : null,
+				subdivision   : null,
+				pin           : null,
+				text          : '-'
+			]
+			entityindividual.address = address
+			
+			entityindividual._schemaname = 'entityindividual';
+			return persistenceService.create( entityindividual );
+		}
+	}
+
+	public def addorupdateSpouseEntity(o){
+		def x = isEntityExist2([lastname:o.Name.LastName,firstname:o.Name.FirstName,middlename:o.Name.MiddleName])
+		// println x
+		if(x){
+			def existingentity            = persistenceService.read([_schemaname:'entityindividual',objid:x.objid]);
+			    existingentity.lastname   = o.Name.LastName ? o.Name.LastName.toUpperCase() : null
+			    existingentity.firstname  = o.Name.FirstName ? o.Name.FirstName.toUpperCase() : null
+			    existingentity.middlename = o.Name.MiddleName ? o.Name.MiddleName.toUpperCase() : null
+			    existingentity.phoneno    = o.Contacts.Landline
+			    existingentity.mobileno   = o.Contacts.Mobile
+			    existingentity.email      = o.Contacts.Email
+				def address =[
+					objid         : existingentity.address.objid,
+					parentid 	  : existingentity.objid,
+					type          : 'nonlocal',
+					addresstype   : null,
+					barangay_objid: null,
+					barangay_name : null,
+					city          : null,
+					municipality  : null,
+					province      : null,
+					bldgno        : null,
+					bldgname      : null,
+					unitno        : null,
+					street        : null,
+					subdivision   : null,
+					pin           : null,
+					text          : '-'
+				]
+				emaddress.save(address)
+			return persistenceService.update([_schemaname:'entityindividual',objid:existingentity.objid]);
+		}else{
+			// def eaddress = newbuildEntityAddress(entity)
+			// eaddress.text = entity.entityaddress.text
+			def entityindividual = [
+				objid     : 'I' + new UID(),
+				lastname  : o.Name.LastName ? o.Name.LastName.toUpperCase() : null,
+				firstname : o.Name.FirstName ? o.Name.FirstName.toUpperCase() : null,
+				middlename: o.Name.MiddleName ? o.Name.MiddleName.toUpperCase() : null,
+				gender    : '-',
+				phoneno   : o.Contacts.Landline,
+				mobileno  : o.Contacts.Mobile,
+				email     : o.Contacts.Email,
+			]
+
+			def address =[
+				objid         : 'A' + new UID(),
+				type          : 'nonlocal',
+				addresstype   : null,
+				barangay_objid: null,
+				barangay_name : null,
+				city          : null,
+				municipality  : null,
+				province      : null,
+				bldgno        : null,
+				bldgname      : null,
+				unitno        : null,
+				street        : null,
+				subdivision   : null,
+				pin           : null,
+				text          : '-'
+			]
+			entityindividual.address = address
+			
+			entityindividual._schemaname = 'entityindividual';
+			return persistenceService.create( entityindividual );
+		}
+	}
+
+	def addorupdateReferenceEntity(o){
+		def x = isEntityExist2([lastname:o.PersonName.LastName,firstname:o.PersonName.FirstName,middlename:o.PersonName.MiddleName])
+		// println x
+		if(x){
+			def existingentity            = persistenceService.read([_schemaname:'entityindividual',objid:x.objid]);
+			    existingentity.lastname   = o.PersonName.LastName ? o.PersonName.LastName.toUpperCase() : null
+			    existingentity.firstname  = o.PersonName.FirstName ? o.PersonName.FirstName.toUpperCase() : null
+			    existingentity.middlename = o.PersonName.MiddleName ? o.PersonName.MiddleName.toUpperCase() : null
+			    existingentity.phoneno    = o.Contacts.Landline
+			    existingentity.mobileno   = o.Contacts.Mobile
+			    existingentity.email      = o.Contacts.Email
+				def address =[
+					objid         : existingentity.address.objid,
+					parentid 	  : existingentity.objid,
+					type          : 'nonlocal',
+					addresstype   : null,
+					barangay_objid: null,
+					barangay_name : o.barname ? o.barname.toUpperCase() : null,
+					city          : null,
+					municipality  : o.munname ? o.munname.toUpperCase() : null,
+					province      : null,
+					bldgno        : null,
+					bldgname      : null,
+					unitno        : null,
+					street        : null,
+					subdivision   : null,
+					pin           : null,
+					text          : o.barname ? o.munname.toUpperCase()  + ", " + o.barname.toUpperCase() : '-'
+				]
+				emaddress.save(address)
+			return persistenceService.update([_schemaname:'entityindividual',objid:existingentity.objid]);
+		}else{
+			// def eaddress = newbuildEntityAddress(entity)
+			// eaddress.text = entity.entityaddress.text
+			def entityindividual = [
+				objid     : 'I' + new UID(),
+				lastname  : o.PersonName.LastName ? o.PersonName.LastName.toUpperCase() : null,
+				firstname : o.PersonName.FirstName ? o.PersonName.FirstName.toUpperCase() : null,
+				middlename: o.PersonName.MiddleName ? o.PersonName.MiddleName.toUpperCase() : null,
+				gender    : '-',
+				// birthdate : o.Birthday.toString()
+			]
+
+			def address =[
+				objid         : 'A' + new UID(),
+				type          : 'nonlocal',
+				addresstype   : null,
+				barangay_objid: null,
+				barangay_name : o.barname ? o.barname.toUpperCase() : null,
+				city          : null,
+				municipality  : o.munname ? o.munname.toUpperCase() : null,
+				province      : null,
+				bldgno        : null,
+				bldgname      : null,
+				unitno        : null,
+				street        : null,
+				subdivision   : null,
+				pin           : null,
+				text          : o.barname ? o.munname.toUpperCase()  + ", " + o.barname.toUpperCase() : '-'
+			]
+			entityindividual.address = address
+		
+			entityindividual._schemaname = 'entityindividual';
+			return persistenceService.create( entityindividual );
+		}
+	}
+
+	public def addorupdateChildEntity(o){
+		def x = isEntityExist2([lastname:o.Name.Last,firstname:o.Name.First,middlename:o.Name.Middle])
+		// println x
+		if(x){
+			def existingentity            = persistenceService.read([_schemaname:'entityindividual',objid:x.objid]);
+			    existingentity.lastname   = o.Name.Last ? o.Name.Last.toUpperCase() : null
+			    existingentity.firstname  = o.Name.First ? o.Name.First.toUpperCase() : null
+			    existingentity.middlename = o.Name.Middle ? o.Name.Middle.toUpperCase() : null
+			    existingentity.birthdate  = o.Birthday.toString()
+				def address =[
+					objid         : existingentity.address.objid,
+					parentid 	  : existingentity.objid,
+					type          : 'nonlocal',
+					addresstype   : null,
+					barangay_objid: null,
+					barangay_name : null,
+					city          : null,
+					municipality  : null,
+					province      : null,
+					bldgno        : null,
+					bldgname      : null,
+					unitno        : null,
+					street        : null,
+					subdivision   : null,
+					pin           : null,
+					text          : '-'
+				]
+				emaddress.save(address)
+			return persistenceService.update([_schemaname:'entityindividual',objid:existingentity.objid]);
+		}else{
+			// def eaddress = newbuildEntityAddress(entity)
+			// eaddress.text = entity.entityaddress.text
+			def entityindividual = [
+				objid     : 'I' + new UID(),
+				lastname  : o.Name.Last ? o.Name.Last.toUpperCase() : null,
+				firstname : o.Name.First ? o.Name.First.toUpperCase() : null,
+				middlename: o.Name.Middle ? o.Name.Middle.toUpperCase() : null,
+				gender    : '-',
+				birthdate : o.Birthday.toString()
+			]
+
+			def address =[
+				objid         : 'A' + new UID(),
+				type          : 'nonlocal',
+				addresstype   : null,
+				barangay_objid: null,
+				barangay_name : null,
+				city          : null,
+				municipality  : null,
+				province      : null,
+				bldgno        : null,
+				bldgname      : null,
+				unitno        : null,
+				street        : null,
+				subdivision   : null,
+				pin           : null,
+				text          : '-'
+			]
+			entityindividual.address = address
+			entityindividual._schemaname = 'entityindividual';
+			return persistenceService.create( entityindividual );
+		}
+	}
+
+	def newbuildEntityAddress(entity){
+		def entityaddress = [
+			objid         : 'A' + new UID(),
+			parentid      : entity.objid,
+			type          : 'nonlocal',
+			addresstype   : null,
+			barangay_objid: null,
+			barangay_name : null,
+			city          : null,
+			municipality  : null,
+			province      : null,
+			bldgno        : null,
+			bldgname      : null,
+			unitno        : null,
+			street        : entity.street,
+			subdivision   : null,
+			pin           : null,
+			text          : null
+		]
+		// def address = entity.entityaddress.split(',')
+		// def barangay = entity.barangayname;
+		
+		// boolean hasWhiteSpace = containsWhiteSpace(barangay);
+		// if(hasWhiteSpace){
+		// 	barangay = barangay.split(' ')[0]
+		// }
+
+		// barangay = barangay + '%'
+		// println entity
+		def addressinfo = main.sqlContext.createQuery('''
+			SELECT b.* FROM bukidnonlgumaster.munbrgy mb
+			INNER JOIN etracs254_bukidnon.`barangay` b ON b.`objid`   = mb.`barangaypin`
+			INNER JOIN etracs254_bukidnon.municipality m ON m.`objid` = b.`parentid`
+			WHERE mb.`brgyid`                                         = $P{psgccode};
+			''').setParameter('psgccode',entity.barangaypsgc).singleResult;
+		// println "TEST"* 50
+		// println entity.muncity
+		if (addressinfo){
+			
+			entityaddress.barangay_objid = addressinfo.objid
+			entityaddress.barangay_name  = addressinfo.name
+		
+			def municipalityinfo = main.sqlContext.createQuery('''
+			SELECT * FROM municipality WHERE objid = $P{objid};
+			''').setParameter('objid',addressinfo.parentid).singleResult;		
+
+			entityaddress.municipality = municipalityinfo.name
+
+			def provinceinfo = main.sqlContext.createQuery('''
+			SELECT * FROM province WHERE objid = $P{objid};
+			''').setParameter('objid',municipalityinfo.parentid).singleResult;	
+
+			entityaddress.province = provinceinfo.name
+			entityaddress.type     = 'local'
+		}else{
+			if (entity.muncity){
+				if (entity.muncity.contains("CITY")){
+					entityaddress.city          = entity.muncity
+					entityaddress.addresstype   = 'CITY'
+					entityaddress.barangay_name = entity.barangayname
+				}else{
+					entityaddress.municipality  = entity.muncity
+					entityaddress.addresstype   = 'MUNICIPALITY'
+					entityaddress.barangay_name = entity.barangayname
+				}
+			}else{
+					entityaddress.municipality  = "-"
+					entityaddress.addresstype   = 'MUNICIPALITY'
+					entityaddress.barangay_name = "-"
+			}
+
+		}
+		entityaddress.text = formatAddress(entityaddress)
+		return entityaddress
+	
+	}
+
+	@ProxyMethod 
+	public def formatAddress( def x) {
+
+		// def municipality = main.sqlContext.createQuery('''
+		// 	SELECT m.* FROM entity_address ea
+		// 	INNER JOIN barangay b ON b.objid = ea.`barangay_objid`
+		// 	INNER JOIN municipality m ON m.objid = b.parentid 
+		// 	WHERE ea.parentid = $P{objid};
+		// 	''').setParameter('objid',objid).singleResult;
+		
+		// def barangay = persistenceSvc.read([ _schemaname: 'barangay', objid:x.barnagay.objid])
+		def txt1 = [x.unitno, x.bldgno, x.bldgname].findAll{ (it? true: false) }.join(" ").trim();
+		def txt2 = [x.street, x.subdivision].findAll{ (it? true: false) }.join(" ").trim();
+		def txt3 = [x.barangay?.name, x.city, x.municipality, x.province].findAll{ (it? true: false) }.join(", ").trim();
+		return [txt1, txt2, txt3].findAll{ (it? true: false) }.join( "\n" ).trim();
+	}
+	public def updateEntity(entity){
+		
+	
+		def eaddress = newbuildEntityAddress(entity)
+    	// eaddress.text = entity.entityaddress.text
+		def entityindividual = [
+			objid      : entity.objid,
+			lastname   : entity.info.lastname,
+			firstname  : entity.info.firstname,
+			middlename : entity.info.middlename,
+			birthdate  : entity.info.birthdate,
+			birthplace : entity.info.birthplace,
+			citizenship: entity.info.citizenship,
+			gender     : entity.info.gender,
+			civilstatus: entity.info.civilstatus,
+			profession : entity.info.profession,
+			tin        : entity.info.tin,
+			sss        : entity.info.sss,
+			height     : entity.info.height,
+			weight     : entity.info.weight,
+			age        : null,
+			religion   : null,
+			photo      : null,
+			thumbnail  : null,
+			address    : eaddress,
+			phoneno    : entity.info.landline,
+			mobileno   : entity.info.mobileno,
+			email      : entity.info.email,
+			name       : entity.name
+
+		]
+		// println entityindividual
+		// emind.create(entityindividual)
+		emaddress.save(eaddress)
+		entityindividual._schemaname = 'entityindividual';
+        persistenceService.update( entityindividual );
+		return entityindividual
+	}
+	public def addEntity(entity){
+		def eaddress = newbuildEntityAddress(entity)
+    	// eaddress.text = entity.entityaddress.text
+		def entityindividual = [
+			objid      : 'I' + new UID(),
+			lastname   : entity.info.lastname,
+			firstname  : entity.info.firstname,
+			middlename : entity.info.middlename,
+			birthdate  : entity.info.birthdate,
+			birthplace : entity.info.birthplace,
+			citizenship: entity.info.citizenship,
+			gender     : entity.info.gender,
+			civilstatus: entity.info.civilstatus,
+			profession : entity.info.profession,
+			tin        : entity.info.tin,
+			sss        : entity.info.sss,
+			height     : entity.info.height,
+			weight     : entity.info.weight,
+			age        : null,
+			religion   : null,
+			photo      : null,
+			thumbnail  : null,
+			address    : eaddress,
+			phoneno    : entity.info.landline,
+			mobileno   : entity.info.mobileno,
+			email      : entity.info.email,
+			name       : entity.name
+		]
+		// println entityindividual
+		// emind.create(entityindividual)
+	
+		entityindividual._schemaname = 'entityindividual';
+        persistenceService.create( entityindividual );
+       
+        // emhrmis.sqlContext.createExecutor('''
+		// 	INSERT INTO hrmis_entity (objid,profileid,nameextension,prenametitle,postnametitle) VALUES ($P{objid},$P{profileid},$P{nameextension},$P{prenametitle},$P{postnametitle});
+		// ''')
+		// .setParameter('objid', entityindividual.objid)
+		// .setParameter('profileid', entity.profileid)
+		// .setParameter('nameextension', entity.info.nameextension)
+		// .setParameter('prenametitle', entity.info.prenametitle)
+		// .setParameter('postnametitle', entity.info.postnametitle)
+		// .execute();
+
+		return entityindividual
+
+		// println entity.profileid
+	 //    emposthrmis.sqlContext.createExecutor('''
+		// INSERT INTO "hrmis"."migrated_profile" VALUES($P{profileid});
+		// ''').setParameter('profileid',entity.profileid).execute();
+
+		// return persistenceService.read([ _schemaname: 'entityindividual', objid: entityindividual.objid ]);
+	}
+
+	// def buildEntityIndividual(entity){
+	// 	def eaddress = buildEntityAddress(entity)
+    // 	eaddress.text = entity.entityaddress
+	// 	def entityindividual = [
+	// 		objid  		: entity.objid,				
+	// 		lastname 	: entity.info.lastname,
+	// 		firstname 	: entity.info.firstname,
+	// 		middlename 	: entity.info.middlename,
+	// 		birthdate 	: entity.info.birthdate,
+	// 		birthplace 	: entity.info.birthplace,
+	// 		citizenship : entity.info.citizenship,
+	// 		gender 		: entity.info.gender,
+	// 		civilstatus : entity.info.civilstatus,
+	// 		profession 	: entity.info.profession,
+	// 		tin 		: entity.info.tin,
+	// 		sss 		: entity.info.sss,
+	// 		height 		: entity.info.height,
+	// 		weight 		: entity.info.weight,
+	// 		acr 		: null,
+	// 		religion 	: null,
+	// 		photo 		: null,
+	// 		thumbnail 	: null,
+	// 		address     : eaddress,
+	// 	]
+
+	// 	// emind.create(entityindividual)
+	// 	entityindividual._schemaname = 'entityindividual';
+    //     persistenceService.create( entityindividual );
+
+    //    	em22.sqlContext.createExecutor('''
+	// 		INSERT INTO etracs25_migrate_entity (objid) VALUES ($P{objid})
+	// 	''')
+	// 	.setParameter('objid', entity.objid)
+	// 	.execute()
+
+	// 	return persistenceService.read([ _schemaname: 'entityindividual', objid: entityindividual.objid ]);
+	// }
+
+	// void buildEntityMultiple(entity){
+	// 	def eaddress = buildEntityAddress(entity)
+    // 	eaddress.text = entity.entityaddress
+	// 	def entitymultiple = [
+	// 		objid   : entity.objid,				
+	// 		fullname: entity.entityname,
+	// 		name    : entity.entityname,
+	// 		address : eaddress,
+	// 		members : entity.members,
+	// 	]
+
+	// 	// emmul.create(entitymultiple)
+	// 	entitymultiple._schemaname = 'entitymultiple';
+    //     persistenceService.create( entitymultiple );
+
+    //    	em22.sqlContext.createExecutor('''
+	// 		INSERT INTO etracs25_migrate_entity (objid) VALUES ($P{objid})
+	// 	''')
+	// 	.setParameter('objid', entity.objid)
+	// 	.execute()
+	// }
+
+	// def buildEntityMember(member){
+	// 	def entitymember = []
+	// 	member.each{o->
+	// 		def m = [
+	// 			objid  					: o.objid,				
+	// 			entityid 				: o.entityid,
+	// 			itemno					: o.itemno,
+	// 			prefix 					: o.prefix,
+	// 			member_objid 			: o.taxpayerid,
+	// 			member_name 			: o.taxpayername,
+	// 			member_address_text 	: o.taxpayeraddress,
+	// 			suffix 					: o.suffix,
+	// 		]
+
+	// 		if(isEntityMigrated(o.taxpayerid)){
+	// 			entitymember.push(m);
+	// 		}else{
+	// 			if (entityExist(o.taxpayerid)){
+	// 				self.migrateEntity(o.taxpayerid)
+	// 				entitymember.push(m);
+	// 			}else{
+	// 				def newentity = [
+	// 					objid      		: o.taxpayerid,
+	// 					// entityno   		: "I" + seqSvc.getNextFormattedSeries( "INDIVIDUAL_ENTITY" ),
+	// 					entityname 		: o.taxpayername,
+	// 					entityaddress 	: o.taxpayeraddress,
+	// 					entitytype 		: 'individual',
+	// 					info			: [:],
+	// 				]
+	// 				def entityname = o.taxpayername.split(',')
+					
+	// 				if (entityname.size() > 2){
+	// 					newentity.info.firstname = entityname[2].replaceAll("\\s","")
+	// 					newentity.info.lastname = entityname[0].replaceAll("\\s","") + " " + entityname[1].replaceAll("\\s","")
+	// 				}else{
+	// 					newentity.info.firstname = entityname[1].replaceAll("\\s","")
+	// 					newentity.info.lastname = entityname[0].replaceAll("\\s","")
+	// 				}
+
+	// 				// buildEntity(newentity)
+	// 				buildEntityIndividual(newentity) 
+	// 				entitymember.push(m);
+	// 			}
+				
+	// 		}
+			
+	// 	}
+	// 	return entitymember
+	// }
+
+	// def buildMissingMember(entitymultiple){
+	// 	def entitymember = []
+	// 	def members = em22.sqlContext.createQuery('''
+	// 	SELECT * FROM entity WHERE $P{entityname} LIKE CONCAT('%',entityname,'%')  AND objid <> $P{objid} AND entitytype = 'individual'
+	// 	''').setParameter('entityname',entitymultiple.entityname).setParameter('objid',entitymultiple.objid).resultList;
+		
+	// 	if (members.size > 0){
+	// 		def x = 0;
+	// 		members.each{
+	// 			def m = [
+	// 				objid  					: 'EM' + new UID(),				
+	// 				entityid 				: it.entityno,
+	// 				itemno					: x++,
+	// 				prefix 					: null,
+	// 				member_objid 			: it.objid,
+	// 				member_name 			: it.entityname,
+	// 				member_address_text 	: it.entityaddress,
+	// 				suffix 					: null,
+	// 			]
+
+	// 			if(isEntityMigrated(it.objid)){
+	// 				entitymember.push(m);
+	// 			}else{
+	// 				if (entityExist(it.objid)){
+	// 					self.migrateEntity(it.objid)
+	// 					entitymember.push(m);
+	// 				}else{
+	// 					def newentity = [
+	// 						objid      		: it.objid,
+	// 						// entityno   		: "I" + seqSvc.getNextFormattedSeries( "INDIVIDUAL_ENTITY" ),
+	// 						entityname 		: it.entityname,
+	// 						entityaddress 	: it.entityaddress,
+	// 						entitytype 		: 'individual',
+	// 						info			: [:],
+	// 					]
+	// 					def entityname = it.entityname.split(',')
+						
+	// 					if (entityname.size() > 2){
+	// 						newentity.info.firstname = entityname[2].replaceAll("\\s","")
+	// 						newentity.info.lastname = entityname[0].replaceAll("\\s","") + " " + entityname[1].replaceAll("\\s","")
+	// 					}else{
+	// 						newentity.info.firstname = entityname[1].replaceAll("\\s","")
+	// 						newentity.info.lastname = entityname[0].replaceAll("\\s","")
+	// 					}
+
+	// 					// buildEntity(newentity)
+	// 					buildEntityIndividual(newentity) 
+	// 					entitymember.push(m);
+	// 				}
+					
+	// 			}
+	// 		}
+	// 	}else{
+	// 		//buildentity
+	// 		def newentity = [
+	// 			objid      		: 'E' + new UID(),
+	// 			entityname 		: entitymultiple.entityname,
+	// 			entityaddress 	: entitymultiple.entityaddress,
+	// 			entitytype 		: 'individual',
+	// 			info			: [firstname:entitymultiple.entityname,lastname:entitymultiple.entityname],
+	// 		]
+	// 		// def entityname = it.entityname.split(',')
+			
+	// 		// if (entityname.size() > 2){
+	// 		// 	newentity.info.firstname = entityname[2].replaceAll("\\s","")
+	// 		// 	newentity.info.lastname = entityname[0].replaceAll("\\s","") + " " + entityname[1].replaceAll("\\s","")
+	// 		// }else{
+	// 		// 	newentity.info.firstname = entityname[1].replaceAll("\\s","")
+	// 		// 	newentity.info.lastname = entityname[0].replaceAll("\\s","")
+	// 		// }
+
+	// 		// buildEntity(newentity)
+	// 		def individual = buildEntityIndividual(newentity) 
+	// 		def nm = [
+	// 				objid  					: 'EM' + new UID(),				
+	// 				entityid 				: individual.entityno,
+	// 				itemno					: 1,
+	// 				prefix 					: null,
+	// 				member_objid 			: individual.objid,
+	// 				member_name 			: individual.entityname,
+	// 				member_address_text 	: entitymultiple.entityaddress,
+	// 				suffix 					: null,
+	// 			]
+
+	// 		entitymember.push(nm);
+	// 	}
+		
+	// 	return entitymember
+	// }
+
+	// void buildEntityJuridical(entity){
+	// 	def eaddress = buildEntityAddress(entity)
+    // 	eaddress.text = entity.entityaddress
+	// 	def entityjuridical = [
+	// 		objid                 : entity.objid,				
+	// 		tin                   : entity.info.tin,
+	// 		name                  : entity.entityname,
+	// 		dtregistered          : entity.info.dtregistered,
+	// 		orgtype               : entity.info.orgtype,
+	// 		nature                : entity.info.nature,
+	// 		administrator_name    : null,
+	// 		administrator_address : null,
+	// 		administrator_position: null,
+	// 		address               : eaddress,
+	// 	]
+
+	// 	// emjur.create(entityjuridical)
+
+	// 	entityjuridical._schemaname = 'entityjuridical';
+    //     persistenceService.create( entityjuridical );
+
+    //    	em22.sqlContext.createExecutor('''
+	// 		INSERT INTO etracs25_migrate_entity (objid) VALUES ($P{objid})
+	// 	''')
+	// 	.setParameter('objid', entity.objid)
+	// 	.execute()
+	// }
+
+	public static boolean containsWhiteSpace(final String testCode){
+	    if(testCode != null){
+	        for(int i = 0; i < testCode.length(); i++){
+	            if(Character.isWhitespace(testCode.charAt(i))){
+	                return true;
+	            }
+	        }
+	    }
+	    return false;
+	}
+
+	def isProfileMigrated(profileid){
+
+		return emhrmis.sqlContext.createQuery('''
+			SELECT * FROM hrmis_entity
+			WHERE profileid = $P{profileid}
+			''').setParameter('profileid',profileid).singleResult;
+	}
+
+	def isPDSMigrated(profileid){
+		def x = emhrmis.sqlContext.createQuery('''
+			SELECT objid FROM hrmis_pds p WHERE p.objid = $P{profileid}
+			''').setParameter('profileid',profileid).singleResult;
+		
+		return x
+	}
+
+	def isEntityExist(entity){
+		return emhrmis.sqlContext.createQuery('''
+			SELECT * FROM etracs254_bukidnon.entityindividual e
+			WHERE lastname = $P{lastname} AND firstname = $P{firstname} AND middlename = $P{middlename} AND birthdate = $P{birthdate}
+			''')
+			.setParameter('lastname',entity.info.lastname)
+			.setParameter('firstname',entity.info.firstname)
+			.setParameter('middlename',entity.info.middlename)
+			// .setParameter('birthdate',entity.info.birthdate)
+			.singleResult; 
+	}
+
+	def isEntityExist2(entity){
+		return emhrmis.sqlContext.createQuery('''
+			SELECT * FROM etracs254_bukidnon.entityindividual e
+			WHERE lastname = $P{lastname} AND firstname = $P{firstname} AND middlename = $P{middlename}
+			''')
+			.setParameter('lastname',entity.lastname)
+			.setParameter('firstname',entity.firstname)
+			.setParameter('middlename',entity.middlename)
+			// .setParameter('birthdate',entity.info.birthdate)
+			.singleResult; 
+	}
+}
+
+
+
+
+// 		def entity = [[info:[lastname:'ABAQUITA',firstname:'RODOLFO',middlename:'M.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'ABAQUITA, RODOLFO M.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'ABAQUITA, RODOLFO M.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'ALBARECE',firstname:'JAY',middlename:'S.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'ALBARECE, JAY S.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'ALBARECE, JAY S.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'ALDEGUER',firstname:'VICTOR',middlename:'P.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'ALDEGUER, VICTOR P.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'ALDEGUER, VICTOR P.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'BAGUIO',firstname:'ALFEO',middlename:'U.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'BAGUIO, ALFEO U.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'BAGUIO, ALFEO U.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'BAGUIO JR.',firstname:'BENITO U',middlename:'B.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'BAGUIO, BENITO U', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'BAGUIO, BENITO U',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'BELTRAN',firstname:'NEMESIO',middlename:'P.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'BELTRAN, NEMESIO B. JR.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'BELTRAN, NEMESIO B. JR.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'CALINGASAN',firstname:'ALEX',middlename:'D.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'CALINGASAN, ALEX P.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'CALINGASAN, ALEX P.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'CENTILLAS',firstname:'RENATO',middlename:'F.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'CENTILLAS, RENATO D.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'CENTILLAS, RENATO D.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'DETICIO',firstname:'ROLAND',middlename:'L.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'DETICIO, ROLAND F.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'DETICIO, ROLAND F.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'DINLAYAN',firstname:'MANUEL',middlename:'D.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'DINLAYAN, MANUEL L.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'DINLAYAN, MANUEL L.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'GALLANO',firstname:'SULPICIO',middlename:'R.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'GALLANO, SULPICIO D.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'GALLANO, SULPICIO D.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'GARCIA',firstname:'GINO ARMSTRONG',middlename:'L.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'GARCIA, GINO ARMSTRONG R.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'GARCIA, GINO ARMSTRONG R.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'GARCIA',firstname:'OLIVER OWEN',middlename:'A.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'GARCIA, OLIVER OWEN L.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'GARCIA, OLIVER OWEN L.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'GAWILAN',firstname:'ROELITO',middlename:'C.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'GAWILAN, ROELITO A.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'GAWILAN, ROELITO A.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'GUDEN',firstname:'ALFREDO',middlename:'G.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'GUDEN, ALFREDO C.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'GUDEN, ALFREDO C.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'JUROLAN',firstname:'ANGELO RALPH',middlename:'R.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'JUROLAN, ANGELO RALPH G.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'JUROLAN, ANGELO RALPH G.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'LABIAL',firstname:'LEO',middlename:'R.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'LABIAL, LEO R.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'LABIAL, LEO R.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'LAGAMON',firstname:'ALBERTO',middlename:'S.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'LAGAMON, ALBERTO R.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'LAGAMON, ALBERTO R.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'LAGO',firstname:'ROGELIO',middlename:'M.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'LAGO, ROGELIO S.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'LAGO, ROGELIO S.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'LOPEZ',firstname:'CLARA MARIE',middlename:'T.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'LOPEZ, CLARA MARIE M.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'LOPEZ, CLARA MARIE M.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'MABELIN',firstname:'ROMEO',middlename:'D.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'MABELIN, ROMEO T.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'MABELIN, ROMEO T.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'MACAS',firstname:'RICHARD',middlename:'T.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'MACAS, RICHARD D.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'MACAS, RICHARD D.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'MACIAS',firstname:'ANACLETO',middlename:'P.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'MACIAS, ANACLETO T.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'MACIAS, ANACLETO T.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'MARAMARA',firstname:'MELCHOR',middlename:'R.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'MARAMARA, MELCHOR P.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'MARAMARA, MELCHOR P.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'MONTESCLAROS',firstname:'MARIVIC',middlename:'S.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'MONTESCLAROS, MARIVIC R.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'MONTESCLAROS, MARIVIC R.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'ONAHON',firstname:'NICKARTER',middlename:'P.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'ONAHON, NICKARTER S.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'ONAHON, NICKARTER S.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'PANCRUDO',firstname:'BEN',middlename:'C.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'PANCRUDO, BEN P.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'PANCRUDO, BEN P.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'PANDIAN',firstname:'MAGDALINO',middlename:'P.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'PANDIAN, MAGDALINO C.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'PANDIAN, MAGDALINO C.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'PEDUCHE',firstname:'GLENN',middlename:'E.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'PEDUCHE, GLENN P.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'PEDUCHE, GLENN P.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'PEPITO',firstname:'CAMILO',middlename:'E.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'PEPITO, CAMILO E.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'PEPITO, CAMILO E.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'PEPITO',firstname:'RANULFO',middlename:'D.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'PEPITO, RANULFO E.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'PEPITO, RANULFO E.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'QUINO',firstname:'CLIVE',middlename:'D.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'QUINO, CLIVE D.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'QUINO, CLIVE D.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'RAGURO',firstname:'ADORACION',middlename:'C.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'RAGURO, ADORACION C.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'RAGURO, ADORACION C.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'TORRES',firstname:'GORDON',middlename:'M.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'TORRES, GORDON M.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'TORRES, GORDON M.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'ZUBIRI JR.',firstname:'JOSE MARIA',middlename:'R.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'ZUBIRI, JOSE MARIA R. JR.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'ZUBIRI, JOSE MARIA R. JR.',entityaddress:'BUKIDNON, MALAYBALAY CITY'],
+// [info:[lastname:'JANIOSO',firstname:'EMMANUEL',middlename:'B.',birthdate:'1990-01-01',birthpalce:null,citizenship:'FILIPINO',gender:'M',civilstatus:'null',profession:'BOARD MEMBER',tin:null,sss:null,height:null,Wight:null],name:'JANIOSO, EMMANUEL B.', address_text:'BUKIDNON',mailingaddress:'BUKIDNON',entitytype:'INDIVIDUAL',entityname:'JANIOSO, EMMANUEL B.',entityaddress:'BUKIDNON, MALAYBALAY CITY']]
