@@ -1,9 +1,11 @@
 <schema adapter="tagabukid_pdrc">
-	<element tablename="pdrc_cells">
-		<field name="objid" primary="true" prefix="CEL" />
-		<field name="name" required="true" searchable="true" indexed="true"/>
-		<field name="code" required="false" searchable="true" indexed="true"/>
-		<field name="description" required="false" searchable="true" indexed="true"/>
-		<field name="oldid" required="false" />
-	</element>
+  <element tablename="pdrc_cells">
+		
+	<field name="objid" primary="true" prefix="CEL" />
+	<field name="name" required="true" searchable="true" indexed="true"/>
+	<field name="code" required="false" searchable="true" indexed="true"/>
+	<field name="description" required="false" searchable="true" indexed="true"/>
+	<field name="oldid" required="false" />
+	
+  </element>
 </schema>

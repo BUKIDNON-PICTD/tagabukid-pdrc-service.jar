@@ -1,0 +1,21 @@
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_detainees_details_counsel">
+
+    <field name="objid" primary="true" prefix="DTC"/>
+    <field name="detaineeid" required="true" searchable="true" visible="false" />
+    <feild name="counsel_objid" required="true" searchable="true" visible="false" />
+    <feild name="name" required="true" searchable="true"/>
+    <feild name="type" required="true" searchable="true"/>
+    <feild name="firstname" required="true" searchable="true"/>
+    <feild name="middlename" required="false" searchable="true"/>
+    <feild name="lastname" required="true" searchable="true"/>
+    
+    <field name="recordlog_datecreated" required="true" searchable="true" visible="false" />
+    <field name="recordlog_createdbyuserid" required="true" searchable="true" visible="false" />
+    <field name="recordlog_createdbyuser" required="true" searchable="true" visible="false" />
+    <field name="recordlog_dateoflastupdate" required="true" searchable="true" visible="false" />
+    <field name="recordlog_lastupdatedbyuserid" required="true" searchable="true" visible="false" />
+    <field name="recordlog_lastupdatedbyuser" required="true" searchable="true" visible="false" />
+
+	</element>
+</schema>

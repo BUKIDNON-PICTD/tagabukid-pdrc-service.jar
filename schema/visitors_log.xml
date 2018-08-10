@@ -1,0 +1,27 @@
+
+<schema adapter="tagabukid_pdrc">
+	<element tablename="pdrc_visitors">
+  <field name="objid" primary="true" prefix="DT"/>
+  <field name="dno" required="true" searchable="true" caption="VNO"/>
+  <field name="visitor_name" required="true" searchable="true" caption="Full Name"/>
+  <field name="visitor_lastname" required="true" searchable="true" caption="Last Name"/>
+  <field name="visitor_firstname" required="true" searchable="true" caption="First Name"/>
+  <field name="visitor_middlename" required="true" searchable="true" caption="Middle Name"/>
+  <field name="visitor_address_objid" required="true" visible="false"/>
+  <field name="visitor_address_text" required="true" searchable="true" caption="Address"/>
+  <field name="visitor_address_barangayid" required="false" searchable="true" visible="false"/>
+  <field name="visitor_address_municipalityid" required="false" searchable="true" visible="false"/>
+  <field name="recordlog_createdbyuserid" required="true" visible="false"/>
+  <field name="recordlog_createdbyuser" required="true" visible="false"/>
+  <field name="recordlog_datecreated" required="true" visible="false"/>
+  <field name="recordlog_lastupdatedbyuserid" required="true" visible="false"/>
+  <field name="recordlog_lastupdatedbyuser" required="true" visible="false"/>
+  <field name="recordlog_dateoflastupdate" required="true" visible="false"/>
+  
+  <complex name="detainee" ref="pdrc_detainees" jointype="one-to-many" required="false">
+			<key field="objid" target="detaineeid" /> 		
+	</complex>
+
+
+	</element>
+</schema>

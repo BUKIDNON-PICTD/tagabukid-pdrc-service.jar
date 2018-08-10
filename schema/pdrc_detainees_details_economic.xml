@@ -1,9 +1,16 @@
 <schema adapter="tagabukid_pdrc">
-	<element tablename="pdrc_detainees_details_economic">
+  <element tablename="pdrc_detainees_details_economic">
 		
-		<field name="objid" primary="true" prefix="DTE" />
-		<field name="detainees_objid" required="true" searchable="true" />
-		<field name="occupation" required="true" searchable="true" />
+	<field name="objid" primary="true" prefix="DTE" />
+	<field name="detaineeid" required="true" searchable="true" visible="false" />
+	<field name="companyname" required="false" searchable="true" visible="true" />	
 
-	</element>
+	<complex name="businessaddress" required="false" serializer="default" /> 
+
+	<field name="position" required="false" searchable="true" visible="true" />
+	<field name="salary" required="false" searchable="true" visible="true" />
+	<field name="from" required="false" searchable="true" visible="true" />
+	<field name="to" required="false" searchable="true" visible="true" />
+
+  </element>
 </schema>

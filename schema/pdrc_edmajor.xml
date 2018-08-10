@@ -1,0 +1,8 @@
+<schema adapter="tagabukid_pdrc">
+  <element tablename="pdrc_edmajor">
+
+	<field name="objid" primary="true" prefix="EM" />
+	<field name="major" required="true" searchable="true" indexed="true"/>
+
+  </element>
+</schema>

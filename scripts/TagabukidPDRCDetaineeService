@@ -24,9 +24,14 @@ class TagabukidPDRCDetaineeService
 	@ProxyMethod
 	def initCreate(){
 		def entity = [:];
-		entity.recordlog = [:]
+		    entity.objid = 'DNO' + new java.rmi.server.UID() +"-"+ dtSvc.getServerDate().year +"-N"
+		    entity.state = "DRAFT"
+		    entity.recordlog = [:]
+		    entity.height = 0
+		    entity.weight = 0
         entity.detainee = [:]
-		entity.recordlog.datecreated = dtSvc.serverDate
+        
+		    entity.recordlog.datecreated = dtSvc.serverDate
         entity.recordlog.createdbyuserid = env.USERID
         entity.recordlog.createdbyuser = env.FULLNAME
         entity.recordlog.dateoflastupdate =  dtSvc.serverDate
@@ -34,18 +39,35 @@ class TagabukidPDRCDetaineeService
         entity.recordlog.lastupdatedbyuser = env.FULLNAME
 
         entity.cases = []
+        entity.arrest = []
+        entity.cell = []
+        entity.counsel = []
+        entity.education = []
+        entity.economic= []
+        entity.social = []
+        entity.hearingdetails = []
+        entity.causeofdrop = []
+        entity.visitorslog = []
+      
         return entity;
-
 	}
 
     @ProxyMethod
     public def getDetaineeNo(){
 		def appcode = "DNO"
 		def yr      = dtSvc.serverYear;
-		// def mnth    = dtSvc.serverMonth;
-		// def smon    = ( mnth < 10 ) ? "0"+mnth : mnth+"";
 		def prefix  = appcode+yr;
 		return prefix+seqSvc.getNextFormattedSeries(prefix);
-    }
+  }
+
+   @ProxyMethod 
+    public def formatAddress( def x, def delimiter) {
+    def txt1 = [x.unitno, x.bldgno, x.bldgname].findAll{ (it? true: false) }.join(" ").trim(); 
+    def txt2 = [x.street, x.subdivision].findAll{ (it? true: false) }.join(" ").trim(); 
+    def txt3 = [x.barangay?.name, x.city, x.barangay.parent.name, x.province].findAll{ (it? true: false) }.join(", ").trim(); 
+    return [txt1, txt2, txt3].findAll{ (it? true: false) }.join( delimiter ).trim();
+  }
 
 }
+
+
