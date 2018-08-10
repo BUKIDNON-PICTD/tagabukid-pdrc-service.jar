@@ -1,10 +1,10 @@
 <schema adapter="tagabukid_pdrc">
 	<element tablename="pdrc_detainees_details_case_counsel">
 
-  <feild name="objid" primary="true" prefix="DTCC"/>
-  <feild name="detaineecase_objid" required="true" searchable="true"/>
-  <feild name="name" required="true" searchable="true"/>
-  <feild name="type" required="true" searchable="true"/>
+  <field name="objid" primary="true" prefix="DTCC"/>
+  <field name="detaineecase_objid" required="true" searchable="true"/>
+  <field name="name" required="true" searchable="true"/>
+  <field name="type" required="true" searchable="true"/>
 
 	</element>
 </schema>

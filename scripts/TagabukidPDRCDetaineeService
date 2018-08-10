@@ -47,7 +47,7 @@ class TagabukidPDRCDetaineeService
             entity.social         = []
             entity.hearingdetails = []
             entity.causeofdrop    = []
-            entity.visitors_log   = []
+            entity.visitors   = []
       
         return entity;
 	}

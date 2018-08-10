@@ -4,7 +4,7 @@
 	<field name="objid" primary="true" prefix="DCOD" />
 	<field name="detaineeid" required="true" searchable="true" visible="false" />
 	<field name="dateoftransfer" required="false" searchable="false" />
-	<feild name="causeofdrop_objid" required="true" searchble="true"/>
+	<field name="causeofdrop_objid" required="true" searchble="true"/>
 		
 	<complex name="causeofdrop" ref="pdrc_causeofdropping" jointype="many-to-one" required="false">
 	   <key field="causeofdrop_objid" target="objid" /> 
