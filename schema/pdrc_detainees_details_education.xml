@@ -2,24 +2,24 @@
   <element tablename="pdrc_detainees_details_education">
 		
 	<field name="objid" primary="true" prefix="DEDU" />
-	<field name="detaineeid" required="true" searchable="true" visible="false" />
-	<field name="level" required="true" visible="true"/>
-	<field name="shoolname" required="true" searchable="true" visible="true"/>
-	<field name="schooladdress" required="true" searchable="true" visible="true"/>
+	<field name="detaineeid" required="false" searchable="true" visible="false" />
+	<field name="level" required="false" visible="true"/>
+	<field name="shoolname" required="false" searchable="true" visible="true"/>
+	<field name="schooladdress" required="false" searchable="true" visible="true"/>
 	<field name="course_objid" required="false" searchable="true" prefix="EC"/>
 	<field name="major_objid" required="false" searchable="true" prefix="EM"/>
-	<field name="from" required="true" searchable="false" visible="true"/>
-	<field name="to" required="true" searchable="false" visible="true"/>
+	<field name="from" required="false" searchable="false" visible="true"/>
+	<field name="to" required="false" searchable="false" visible="true"/>
 	<field name="levelorunits" required="false" visible="true"/>
 	<field name="yeargraduated" required="false" searchable="false" visible="true"/>
 	<field name="scholarshipandacademic" required="false" visible="true"/>
 		
-	<field name="recordlog_datecreated" required="true" visible="false" searchable="false" />
-	<field name="recordlog_createdbyuserid" required="true" visible="false" searchable="false" />
-	<field name="recordlog_createdbyuser" required="true" visible="false" searchable="false" />
-	<field name="recordlog_dateoflastupdate" required="true" visible="false" searchable="false" />
-	<field name="recordlog_lastupdatedbyuserid" required="true" visible="false" searchable="false" />
-	<field name="recordlog_lastupdatedbyuser" required="true" visible="false" searchable="false" />
+	<field name="recordlog_datecreated" required="false" visible="false" searchable="false" />
+	<field name="recordlog_createdbyuserid" required="false" visible="false" searchable="false" />
+	<field name="recordlog_createdbyuser" required="false" visible="false" searchable="false" />
+	<field name="recordlog_dateoflastupdate" required="false" visible="false" searchable="false" />
+	<field name="recordlog_lastupdatedbyuserid" required="false" visible="false" searchable="false" />
+	<field name="recordlog_lastupdatedbyuser" required="false" visible="false" searchable="false" />
 
 		<!-- A complex to fetch a master file -->
 	<complex name="course" ref="pdrc_edcourse" jointype="many-to-one" required="false">

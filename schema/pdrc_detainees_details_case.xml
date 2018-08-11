@@ -2,15 +2,22 @@
   <element tablename="pdrc_detainees_details_case">
 	
 	<field name="objid" primary="true" prefix="DTC" />
-	<field name="detaineeid" required="true" searchable="true" visible="false" />
-	<field name="casefile_objid" required="true" searchable="true" />
-	<field name="releaseremarks" required="true" searchable="true" />
-	<field name="sentencedate" required="true" searchable="true" />
-	<field name="sentence" required="true" searchable="true" />
+	<field name="detaineeid" required="false" searchable="true" visible="false" />
+	<field name="casefile_objid" required="false" searchable="true" />
+	<field name="criminalcaseno" required="false" searchable="true" />
+	<field name="releaseremarks" required="false" searchable="true" />
+	<field name="sentencedate" required="false" searchable="true" />
+	<field name="sentence" required="false" searchable="true" />
+	<field name="counsel_objid" required="false" searchable="true" visible="false" />
+	<field name="type" required="false" searchable="true"/>
 
 	<complex name="casefile" ref="pdrc_cases" jointype="many-to-one" required="false">
 	   <key field="casefile_objid" target="objid" /> 
 	</complex>
+
+	<!-- <complex name="counsel" ref="entityindividual" jointype="many-to-one" required="false">
+		<key field="counsel_objid" target="objid" /> 
+	</complex> -->
 
   </element>
 </schema>

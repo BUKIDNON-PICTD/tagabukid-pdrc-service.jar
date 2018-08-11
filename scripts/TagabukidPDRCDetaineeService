@@ -42,12 +42,12 @@ class TagabukidPDRCDetaineeService
             entity.cases          = []
             entity.arrest         = []
             entity.cell           = []
-            entity.counsel        = []
+            // entity.counsel        = []
             entity.education      = []
             entity.economic       = []
             entity.social         = []
             entity.hearingdetails = []
-            entity.causeofdrop    = []
+            // entity.causeofdrop    = []
             entity.visitors   = []
       
         return entity;

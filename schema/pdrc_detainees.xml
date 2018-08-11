@@ -2,19 +2,19 @@
 	<element tablename="pdrc_detainees">
     
     <field name="objid" primary="true" prefix="DT"/>
-    <field name="dno" required="true" searchable="true" caption="DNO"/>
-    <field name="detainee_name" required="true" searchable="true" caption="Full Name"/>
-    <field name="detainee_lastname" required="true" searchable="true" caption="Last Name"/>
-    <field name="detainee_firstname" required="true" searchable="true" caption="First Name"/>
-    <field name="detainee_middlename" required="true" searchable="true" caption="Middle Name"/>
+    <field name="dno" required="false" searchable="true" caption="DNO"/>
+    <field name="detainee_name" required="false" searchable="true" caption="Full Name"/>
+    <field name="detainee_lastname" required="false" searchable="true" caption="Last Name"/>
+    <field name="detainee_firstname" required="false" searchable="true" caption="First Name"/>
+    <field name="detainee_middlename" required="false" searchable="true" caption="Middle Name"/>
     <field name="alias" required="false" searchable="true" caption="AKA"/>
-    <field name="detainee_address_objid" required="true" visible="false"/>
-    <field name="detainee_address_text" required="true" searchable="true" caption="Address"/>
+    <complex name="detainee_address" required="false" serializer="default" />
+    <field name="detainee_address_text" required="false" searchable="true" caption="Address"/>
     <field name="detainee_address_barangayid" required="false" searchable="true" visible="false"/>
     <field name="detainee_address_municipalityid" required="false" searchable="true" visible="false"/>
  
     <!-- physical attribute-->
-    <field name="heightft" required="false" searchable="true" caption="Height"/>
+    <field name="heightm" required="false" searchable="true" caption="Height"/>
     <field name="weightkg" required="false" searchable="true" caption="Weight"/>
     <field name="eyecolor" required="false" searchable ="true" caption="Eye Color" />
     <field name="haircolor" required="false" searchable ="true" caption="Hair Color" />
@@ -26,12 +26,12 @@
     <field name="oldprisonno" required="false" searchable="true" caption="Old Prison No."/>
     <field name="olddetaineeid" required="false" visible="false"/>
     
-    <field name="recordlog_createdbyuserid" required="true" visible="false"/>
-    <field name="recordlog_createdbyuser" required="true" visible="false"/>
-    <field name="recordlog_datecreated" required="true" visible="false"/>
-    <field name="recordlog_lastupdatedbyuserid" required="true" visible="false"/>
-    <field name="recordlog_lastupdatedbyuser" required="true" visible="false"/>
-    <field name="recordlog_dateoflastupdate" required="true" visible="false"/>
+    <field name="recordlog_createdbyuserid" required="false" visible="false"/>
+    <field name="recordlog_createdbyuser" required="false" visible="false"/>
+    <field name="recordlog_datecreated" required="false" visible="false"/>
+    <field name="recordlog_lastupdatedbyuserid" required="false" visible="false"/>
+    <field name="recordlog_lastupdatedbyuser" required="false" visible="false"/>
+    <field name="recordlog_dateoflastupdate" required="false" visible="false"/>
   
     <!--relationships-->
     <complex name="cases" ref="pdrc_detainees_details_case" jointype="one-to-many" required="false">
@@ -46,9 +46,9 @@
       <key field="objid" target="detaineeid"/>
     </complex> 
 
-    <complex name="counsel" ref="pdrc_detainees_details_counsel" jointype="one-to-many" required="false">
+    <!-- <complex name="counsel" ref="pdrc_detainees_details_counsel" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid" />
-    </complex>
+    </complex> -->
  
     <complex name="education" ref="pdrc_detainees_details_education" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>
@@ -62,14 +62,13 @@
       <key field="objid" target="detaineeid"/>
     </complex>
 
-    <complex name="hearingdetails" ref="pdrc_detainees_hearingdetails" jointype="one-to-many" required="false">
+    <complex name="hearingdetails" ref="pdrc_detainees_details_hearingdetails" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>
     </complex>
 
-    <complex name="causeofdrop" ref="pdrc_detainees_causeofdropping" jointype="one-to-many" required="false">
+    <!-- <complex name="causeofdrop" ref="pdrc_detainees_causeofdropping" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>
-    </complex>
-
+    </complex> -->
 
     <complex name="visitors" ref="pdrc_detainees_visitors" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>

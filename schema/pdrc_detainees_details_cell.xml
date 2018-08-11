@@ -2,8 +2,9 @@
   <element tablename="pdrc_detainees_details_cell">
 		
 	<field name="objid" primary="true" prefix="DTCL" />	
-	<field name="detaineeid" required="true" searchable="true" visible="false" />
-	<field name="cell_objid" required="true" searchable="true" />
+	<field name="detaineeid" required="false" searchable="true" visible="false" />
+	<field name="cell_objid" required="false" searchable="true" />
+	<field name="datein" required="false" searchable="true" />
 
 	<complex name="cell" ref="pdrc_cells" jointype="many-to-one" required="false">
   	   <key field="cell_objid" target="objid" /> 

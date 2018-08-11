@@ -1,13 +1,14 @@
 
 <schema adapter="tagabukid_pdrc">
-  <element tablename="pdrc_detainees_hearingdetails">
+  <element tablename="pdrc_detainees_details_hearingdetails">
 
 	<field name="objid" primary="true" prefix="DHD" />
-	<field name="detaineeid" required="true" searchable="true" visible="false" />
-	<field name="courtbranch_objid" required="true" searchable="true" />
+	<field name="detaineeid" required="false" searchable="true" visible="false" />
+	<field name="courtbranch_objid" required="false" searchable="true" />
 	<field name="hearingdate" required="false" searchable="true" />
 	<field name="hearingtime" required="false" searchable="true" />
-		
+	<field name="remarks" required="false" searchable="true" />
+
 	<complex name="courtbranch" ref="pdrc_courts" jointype="many-to-one" required="false">
 		<key field="courtbranch_objid" target="objid" /> 
 	</complex>
