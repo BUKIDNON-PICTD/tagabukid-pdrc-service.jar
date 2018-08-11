@@ -4,8 +4,8 @@ import com.rameses.services.extended.*;
 
 class TagabukidPDRCReportService 
 {
-	@ActiveDB(value='pdrc_detainees', em='tagabukid_pdrc')
-	def emx;
+    @ActiveDB(value='pdrc_reports', em='tagabukid_pdrc')
+	def em;
 
 	@Service("PersistenceService")
     def persistenceSvc;
@@ -23,26 +23,26 @@ class TagabukidPDRCReportService
 	def env;
 
 	@ProxyMethod
-	public def getPDRCMasterListByGender(){
-		// def data = [:]
-	    // def reportdata = []
+	public def getPDRCMasterListByGender(params){
+		def data = [:]
+	    def list = []
 
-        // if(params.gender == "Male"){
-        //     params.filter = "AND UPPER(xxx.`gender`) IN ('MALE','M') "
-        // }else{
-        //     params.filter = "AND UPPER(xxx.`gender`) IN ('FEMALE','F') "
-        // }
-        // params.casefileid = params.casefile.objid
+        if(params.gender == "Male"){
+            params.filter = "AND UPPER(xxx.`gender`) IN ('MALE','M') "
+        }else{
+            params.filter = "AND UPPER(xxx.`gender`) IN ('FEMALE','F') "
+        }
+        params.casefileid = params.casefile.objid
+		
+       	list = em.getPDRCMasterListByGender(params)
 
-        // reportdata =  emx.getTest()
-	
-		// data.reportdata = reportdata;
-		// data.parameters = [
-		// 	LGUNAME  :"PG-BUKIDNON, REGION 10",
-		// 	LGUADDRESS : "Provincial Capiptol, City of Malaybalay",
-		// 	TITLE :"PDRC Master List (" + params.gender.toUpperCase() + ") Case:"  + params.casefile.name.toUpperCase()
-		// ]
-		return emx.getTest()
+		data.reportdata = list;
+		data.parameters = [
+			LGUNAME  :"PG-BUKIDNON, REGION 10",
+			LGUADDRESS : "Provincial Capiptol, City of Malaybalay",
+			TITLE :"PDRC Master List (" + params.gender.toUpperCase() + ") Case:"  + params.casefile.name.toUpperCase()
+		]
+		return data
 
 	}
 
