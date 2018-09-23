@@ -3,25 +3,27 @@
     
     <field name="objid" primary="true" prefix="DT"/>
     <field name="dno" required="false" searchable="true" caption="DNO"/>
-    <field name="detainee_name" required="false" searchable="true" caption="Full Name"/>
-    <field name="detainee_lastname" required="false" searchable="true" caption="Last Name"/>
-    <field name="detainee_firstname" required="false" searchable="true" caption="First Name"/>
-    <field name="detainee_middlename" required="false" searchable="true" caption="Middle Name"/>
+    <field name="prisonno" required="true" searchable="true" caption="Prison No"/>
+    <field name="typeofinmate" required="true" searchable="true" caption="Type of Inmate"/>
+    <field name="detainee_name" required="true" searchable="true" caption="Full Name"/>
+    <field name="detainee_lastname" required="true" searchable="true" caption="Last Name"/>
+    <field name="detainee_firstname" required="true" searchable="true" caption="First Name"/>
+    <field name="detainee_middlename" required="true" searchable="true" caption="Middle Name"/>
     <field name="alias" required="false" searchable="true" caption="AKA"/>
-    <complex name="detainee_address" required="false" serializer="default" />
-    <field name="detainee_address_text" required="false" searchable="true" caption="Address"/>
-    <field name="detainee_address_barangayid" required="false" searchable="true" visible="false"/>
+    <complex name="detainee_address" required="true" serializer="default" />
+    <field name="detainee_address_text" required="true" searchable="true" caption="Address"/>
+    <field name="detainee_address_barangayid" required="true" searchable="true" visible="false"/>
     <field name="detainee_address_municipalityid" required="false" searchable="true" visible="false"/>
  
     <!-- physical attribute-->
-    <field name="heightm" required="false" searchable="true" caption="Height"/>
-    <field name="weightkg" required="false" searchable="true" caption="Weight"/>
-    <field name="eyecolor" required="false" searchable ="true" caption="Eye Color" />
-    <field name="haircolor" required="false" searchable ="true" caption="Hair Color" />
-    <field name="bodybuild" required="false" searchable ="true" caption="Body Build"/>
-    <field name="complexion" required="false" searchable ="true" caption="Complexion"/>
-    <field name="scarsandmarks" required="false" searchable ="true" caption="Scars And Marks"/>
-    <field name="peculiarities" required="false" searchable ="true" caption="Peculiarities"/>
+    <field name="heightm" required="true" searchable="true" caption="Height"/>
+    <field name="weightkg" required="true" searchable="true" caption="Weight"/>
+    <field name="eyecolor" required="true" searchable ="true" caption="Eye Color" />
+    <field name="haircolor" required="true" searchable ="true" caption="Hair Color" />
+    <field name="bodybuild" required="true" searchable ="true" caption="Body Build"/>
+    <field name="complexion" required="true" searchable ="true" caption="Complexion"/>
+    <field name="scarsandmarks" required="true" searchable ="true" caption="Scars And Marks"/>
+    <field name="peculiarities" required="true" searchable ="true" caption="Peculiarities"/>
   
     <field name="oldprisonno" required="false" searchable="true" caption="Old Prison No."/>
     <field name="olddetaineeid" required="false" visible="false"/>
@@ -66,9 +68,9 @@
       <key field="objid" target="detaineeid"/>
     </complex>
 
-    <!-- <complex name="causeofdrop" ref="pdrc_detainees_causeofdropping" jointype="one-to-many" required="false">
+    <complex name="causeofdrop" ref="pdrc_detainees_causeofdropping" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>
-    </complex> -->
+    </complex>
 
     <complex name="visitors" ref="pdrc_detainees_visitors" jointype="one-to-many" required="false">
       <key field="objid" target="detaineeid"/>

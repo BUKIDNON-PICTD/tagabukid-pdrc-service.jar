@@ -5,9 +5,9 @@
 	<field name="objid" primary="true" prefix="DHD" />
 	<field name="detaineeid" required="false" searchable="true" visible="false" />
 	<field name="courtbranch_objid" required="false" searchable="true" />
-	<field name="hearingdate" required="false" searchable="true" />
-	<field name="hearingtime" required="false" searchable="true" />
-	<field name="remarks" required="false" searchable="true" />
+	<field name="hearingdate" required="true" searchable="true" />
+	<field name="hearingtime" required="true" searchable="true" />
+	<field name="remarks" required="true" searchable="true" />
 
 	<complex name="courtbranch" ref="pdrc_courts" jointype="many-to-one" required="false">
 		<key field="courtbranch_objid" target="objid" /> 

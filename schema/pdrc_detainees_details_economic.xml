@@ -3,7 +3,10 @@
 		
 	<field name="objid" primary="true" prefix="DTE" />
 	<field name="detaineeid" required="true" searchable="true" visible="false" />
-	<field name="companyname" required="false" searchable="true" visible="true" />	
+	<field name="companyname" required="false" searchable="true" visible="true" />
+	<field name="businessaddress_text" required="true" searchble="true"/>
+	<field name="businessaddress_barangayid" required="true" searchble="true"/>
+	<field name="businessaddress_municipalityid" required="true" searchble="true"/>	
 
 	<complex name="businessaddress" required="false" serializer="default" /> 
 

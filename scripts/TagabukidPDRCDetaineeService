@@ -47,8 +47,8 @@ class TagabukidPDRCDetaineeService
             entity.economic       = []
             entity.social         = []
             entity.hearingdetails = []
-            // entity.causeofdrop    = []
-            entity.visitors   = []
+            entity.causeofdrop    = []
+            entity.visitors       = []
       
         return entity;
 	}

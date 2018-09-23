@@ -10,8 +10,9 @@
 	<field name="visitor_lastname" caption="Last Name" searchable="true" required="true"/>
 	<field name="visitor_firstname" caption="First Name" searchable="true" required="true"/>
 	<field name="visitor_middlename" caption="Middle Name" searchable="true" required="true"/>
-	<field name="visitor_gender" caption="Gender" searchable="true" required="true"/>
-	<complex name="visitor_address" required="true" serializer="default" />
+<!-- 	<field name="visitor_gender" caption="Gender" searchable="true" required="true"/>
+ -->	
+    <complex name="visitor_address" required="true" serializer="default" />
 	<field name="visitor_address_text" caption="Address" searchable="true" required="true"/>
 	<field name="datevisited" caption="Date Visited" searchable="true" required="true"/>
 	<field name="relationship_objid" caption="Relationship" searchable="true" required="true"/>

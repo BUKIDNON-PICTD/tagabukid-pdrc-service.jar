@@ -4,15 +4,15 @@
 
     <field name="objid" primary="true" prefix="DTA"/>
     <field name="detaineeid" required="false" searchable="true" visible="false" />
-    <complex name="arrestaddress" required="false" serializer="default" />
-    <field name="arrestaddress_text" required="false" searchble="true"/>
-    <field name="arrestdate" required="false" searchble="true"/>
-    <field name="arresttime" required="false" searchble="true"/>
-    <field name="arrestingofficial" required="false" searchble="true"/>
-    <field name="dateofcommitment" required="false" searchble="true"/>
-    <field name="dateofsentence" required="false" searchble="true"/>
-    <field name="servingsentence" required="false" searchble="true"/>
-    <field name="hasmentalproblem" required="false" searchble="true"/>
+    <complex name="arrestaddress" required="true" serializer="default" />
+    <field name="arrestaddress_text" required="true" searchble="true"/>
+    <field name="arrestdate" required="true" searchble="true"/>
+    <field name="arresttime" required="true" searchble="true"/>
+    <field name="arrestingofficial" required="true" searchble="true"/>
+    <field name="dateofcommitment" required="true" searchble="true"/>
+    <field name="dateofsentence" required="true" searchble="true"/>
+    <field name="servingsentence" required="true" searchble="true"/>
+    <field name="hasmentalproblem" required="true" searchble="true"/>
     <field name="datereleasedorwaive" required="false" searchble="true"/>
     <field name="causeofdropping_objid" required="false" searchble="true"/>
     <field name="dateoftransfered" required="false" searchble="true"/>
